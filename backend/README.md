@@ -32,3 +32,4 @@ python --version
 
 - `boto3` for AWS interactions (production)
 - `pytest` for unit testing (development)
+- `moto` for mocking AWS resources (development)

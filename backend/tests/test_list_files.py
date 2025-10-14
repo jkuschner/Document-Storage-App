@@ -1,25 +1,76 @@
 # tests/test_list_files.py
 import json
+import os
 import pytest
+import boto3
+from moto import mock_aws
 
-# Import the handler function directly now that __init__.py is present
+# Import the handler function
 from lambda_functions.list_files.handler import lambda_handler
 
-def test_list_files_response_structure():
-    """
-    Tests that the lambda_handler returns a valid HTTP response structure
-    with the expected status code and body content.
-    """
-    # Call the Lambda handler with empty event/context objects
-    response = lambda_handler({}, None)
-    
-    # Check the required HTTP structure
-    assert 'statusCode' in response
-    assert response['statusCode'] == 200
-    assert 'body' in response
+# name must match handler's default or environment variable
+TEST_BUCKET_NAME = 'test-dummy-bucket'
+TEST_REGION = 'us-west-2'
 
-    # Check the JSON content inside the body
+@mock_aws
+def test_list_files_with_content():
+    """
+    tests the handler when the S3 bucket contains files
+    """
+    # Create the mock bucket
+    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    s3_client.create_bucket(
+        Bucket=TEST_BUCKET_NAME,
+        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    )
+
+    # Set environment variables
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+
+    # add files to mock bucket
+    s3_client.put_object(Bucket=TEST_BUCKET_NAME, 
+                         Key='user/file_a.txt', 
+                         Body='Hello, I am file a.')
+    s3_client.put_object(Bucket=TEST_BUCKET_NAME,
+                         Key='user/file_b.pdf',
+                         Body='This is file b.')
+    
+
+    # Call the handler
+    response = lambda_handler({}, None)
+
+    # Check statusCode
+    assert response['statusCode'] == 200
+
     body_data = json.loads(response['body'])
-    assert 'message' in body_data
-    assert 'Hello from list_files Lambda' in body_data['message']
-    assert 'files' in body_data
+
+    # Check files were retrieved correctly
+    expected_files = ['user/file_a.txt', 'user/file_b.pdf']
+    assert sorted(body_data['files']) == sorted(expected_files)
+    assert 'listed 2 files' in body_data['message']
+
+@mock_aws
+def test_list_files_empty_bucket():
+    """
+    Tests the handler when the S3 bucket is empty.
+    """
+    # Create mock bucket, but add no files
+    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    s3_client.create_bucket(
+        Bucket=TEST_BUCKET_NAME,
+        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    )
+
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+
+    # 2. EXECUTE: Call the handler
+    response = lambda_handler({}, None)
+
+    # 3. ASSERT: Check the response
+    assert response['statusCode'] == 200
+
+    body_data = json.loads(response['body'])
+
+    # Check that the file list is empty
+    assert body_data['files'] == []
+    assert 'listed 0 files' in body_data['message']
