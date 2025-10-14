@@ -41,3 +41,24 @@ def test_list_files_with_content():
     expected_files = ['user/file_a.txt', 'user/file_b.pdf']
     assert sorted(body_data['files']) == sorted(expected_files)
     assert 'listed 2 files' in body_data['message']
+
+@mock_aws
+def test_list_files_empty_bucket():
+    # Tests the handler when the S3 bucket is empty.
+    # 1. SETUP: Create a mocked bucket, but add no files
+    s3_client = boto3.client('s3')
+    s3_client.create_bucket(Bucket=TEST_BUCKET_NAME)
+
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+
+    # 2. EXECUTE: Call the handler
+    response = lambda_handler({}, None)
+
+    # 3. ASSERT: Check the response
+    assert response['statusCode'] == 200
+
+    body_data = json.loads(response['body'])
+
+    # Check that the file list is empty
+    assert body_data['files'] == []
+    assert 'listed 0 files' in body_data['message']
