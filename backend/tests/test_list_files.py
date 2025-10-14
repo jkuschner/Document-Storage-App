@@ -10,15 +10,24 @@ from lambda_functions.list_files.handler import lambda_handler
 
 # name must match handler's default or environment variable
 TEST_BUCKET_NAME = 'test-dummy-bucket'
+TEST_REGION = 'us-west-2'
 
 @mock_aws
 def test_list_files_with_content():
     """
     tests the handler when the S3 bucket contains files
     """
-    # Create the mock bucket and add files
-    s3_client = boto3.client('s3')
-    s3_client.create_bucket(Bucket=TEST_BUCKET_NAME)
+    # Create the mock bucket
+    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    s3_client.create_bucket(
+        Bucket=TEST_BUCKET_NAME,
+        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    )
+
+    # Set environment variables
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+
+    # add files to mock bucket
     s3_client.put_object(Bucket=TEST_BUCKET_NAME, 
                          Key='user/file_a.txt', 
                          Body='Hello, I am file a.')
@@ -26,8 +35,6 @@ def test_list_files_with_content():
                          Key='user/file_b.pdf',
                          Body='This is file b.')
     
-    # set environment variable
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
 
     # Call the handler
     response = lambda_handler({}, None)
@@ -44,10 +51,15 @@ def test_list_files_with_content():
 
 @mock_aws
 def test_list_files_empty_bucket():
-    # Tests the handler when the S3 bucket is empty.
-    # 1. SETUP: Create a mocked bucket, but add no files
-    s3_client = boto3.client('s3')
-    s3_client.create_bucket(Bucket=TEST_BUCKET_NAME)
+    """
+    Tests the handler when the S3 bucket is empty.
+    """
+    # Create mock bucket, but add no files
+    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    s3_client.create_bucket(
+        Bucket=TEST_BUCKET_NAME,
+        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    )
 
     os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
 
