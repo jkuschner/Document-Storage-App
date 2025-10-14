@@ -18,7 +18,8 @@ build-backend = "poetry.core.masonry.api"
 
 [dependency-groups]
 dev = [
-    "pytest (>=8.4.2,<9.0.0)"
+    "pytest (>=8.4.2,<9.0.0)",
+    "moto (>=5.1.14,<6.0.0)"
 ]
 
 [tool.pytest.ini_options]
