@@ -1,0 +1,43 @@
+name: Deploy Infrastructure
+
+on:
+  # This workflow runs on pushes to the main branch...
+  push:
+    branches: [ main ]
+    # ...but ONLY if files inside the 'infrastructure/' folder were changed.
+    paths:
+      - 'infrastructure/**'
+
+jobs:
+  deploy:
+    name: Deploy CloudFormation Stacks
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checks out your repository's code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Configures the AWS credentials from GitHub Secrets
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2 # Your selected region
+
+      # Step 3: Deploys the frontend stack
+      - name: Deploy Frontend Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/cloudformation/frontend.yml \
+            --stack-name production-frontend-stack \
+            --no-fail-on-empty-changeset
+
+      # Step 4: Deploys the backend stack
+      - name: Deploy Backend Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/cloudformation/backend.yml \
+            --stack-name production-backend-stack \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset
