@@ -13,10 +13,6 @@ Parameters:
     Type: String
     Default: file-storage
   
-  AlarmEmail:
-    Type: String
-    Default: your-email@example.com
-    Description: Email address for alarm notifications
 
 Resources:
   # SNS Topic for Alarms
@@ -25,6 +21,7 @@ Resources:
     Properties:
       TopicName: !Sub '${ProjectName}-alarms-${Environment}'
       DisplayName: File Storage System Alarms
+      # No subscriptions - can be added manually later if needed
 
   # Lambda Error Alarm - Upload
   UploadLambdaErrorAlarm:
