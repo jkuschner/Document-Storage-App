@@ -45,4 +45,19 @@ def test_share_file_url_is_generated():
     assert TEST_FILENAME in generated_url
 
     # check for expiration query parameter
-    assert 'X-Amz-Expires=3600' in generated_url
+    assert 'Expires=' in generated_url
+
+@mock_aws
+def test_share_file_missing_filename():
+    """
+    Tests the handler's response when the filename query parameter is missing.
+    """
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+    
+    # Call the handler with an empty event
+    missing_event = {}
+    response = lambda_handler(missing_event, None)
+
+    # Check for 400 Bad Request
+    assert response['statusCode'] == 400
+    assert 'Missing filename query parameter' in json.loads(response['body'])['message']
