@@ -25,9 +25,6 @@ Resources:
     Properties:
       TopicName: !Sub '${ProjectName}-alarms-${Environment}'
       DisplayName: File Storage System Alarms
-      Subscription:
-        - Endpoint: !Ref AlarmEmail
-          Protocol: email
 
   # Lambda Error Alarm - Upload
   UploadLambdaErrorAlarm:

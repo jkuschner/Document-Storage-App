@@ -51,7 +51,7 @@ jobs:
           aws cloudformation deploy \
             --template-file infrastructure/cloudformation/monitoring.yml \
             --stack-name file-storage-monitoring-dev \
-            --parameter-overrides Environment=dev AlarmEmail=your-email@example.com \
+            --parameter-overrides Environment=dev \
             --no-fail-on-empty-changeset
 
       - name: Deploy Frontend Stack
