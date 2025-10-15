@@ -20,3 +20,45 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+
+  FilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'files-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: fileId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: fileId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: fileId-index
+          KeySchema:
+            - AttributeName: fileId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+Outputs:
+  FileStorageBucketName:
+    Description: Name of the S3 bucket for file storage
+    Value: !Ref FileStorageBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-FileStorageBucket'
+  
+  FilesTableName:
+    Description: Name of the DynamoDB Files table
+    Value: !Ref FilesTable
+    Export:
+      Name: !Sub '${AWS::StackName}-FilesTable'
+  
+  FilesTableArn:
+    Description: ARN of the DynamoDB Files table
+    Value: !GetAtt FilesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FilesTableArn'
