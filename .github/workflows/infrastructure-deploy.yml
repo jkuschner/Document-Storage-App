@@ -21,11 +21,20 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - name: Deploy Frontend Stack
+      - name: Deploy Infrastructure Stack
         run: |
           aws cloudformation deploy \
-            --template-file infrastructure/cloudformation/frontend.yml \
-            --stack-name production-frontend-stack \
+            --template-file infrastructure/cloudformation/infrastructure.yml \
+            --stack-name dev-infrastructure-stack \
+            --parameter-overrides Environment=dev \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy Auth Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/cloudformation/auth.yml \
+            --stack-name dev-auth-stack \
+            --parameter-overrides Environment=dev \
             --no-fail-on-empty-changeset
 
       - name: Deploy Backend Stack
@@ -33,5 +42,21 @@ jobs:
           aws cloudformation deploy \
             --template-file infrastructure/cloudformation/backend.yml \
             --stack-name production-backend-stack \
+            --parameter-overrides Environment=dev \
             --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy Monitoring Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/cloudformation/monitoring.yml \
+            --stack-name file-storage-monitoring-dev \
+            --parameter-overrides Environment=dev AlarmEmail=your-email@example.com \
+            --no-fail-on-empty-changeset
+
+      - name: Deploy Frontend Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/cloudformation/frontend.yml \
+            --stack-name production-frontend-stack \
             --no-fail-on-empty-changeset

@@ -89,6 +89,46 @@ Resources:
         - !Ref AlarmTopic
       TreatMissingData: notBreaching
 
+  # Lambda Error Alarm - Delete
+  DeleteLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-delete-lambda-errors-${Environment}'
+      AlarmDescription: Alert when delete Lambda has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${ProjectName}-delete-file-${Environment}'
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  # Lambda Error Alarm - Share
+  ShareLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-share-lambda-errors-${Environment}'
+      AlarmDescription: Alert when share Lambda has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${ProjectName}-share-file-${Environment}'
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
   # API Gateway 5xx Error Alarm
   APIGateway5xxAlarm:
     Type: AWS::CloudWatch::Alarm
