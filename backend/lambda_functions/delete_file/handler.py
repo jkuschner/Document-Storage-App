@@ -12,7 +12,7 @@ def lambda_handler(event, context):
     Expects 'filename' in the query string parameters.
     """
     try:
-        file_name = event.get('queryStringParameter', {}).get('filename')
+        file_name = event.get('queryStringParameters', {}).get('filename')
         if not file_name:
             return {
                 'statusCode': 400,
