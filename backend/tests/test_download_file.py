@@ -48,3 +48,24 @@ def test_download_file_success():
     # Verify the decoded body matches the original content
     decoded_content = base64.b64decode(response['body']).decode('utf-8')
     assert decoded_content == TEST_CONTENT.decode('utf-8')
+
+@mock_aws
+def test_download_file_not_found():
+    """
+    Tests that the handler returns a 404 when the file does not exist.
+    """
+    # Create an empty bucket
+    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    s3_client.create_bucket(
+        Bucket=TEST_BUCKET_NAME,
+        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    )
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME 
+
+    # Call the handler
+    response = lambda_handler(MOCK_EVENT, None)
+
+    # Check for 404 Not Found
+    assert response['statusCode'] == 404
+    body_data = json.loads(response['body'])
+    assert 'not found' in body_data['message']
