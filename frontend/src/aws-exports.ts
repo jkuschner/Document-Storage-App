@@ -3,11 +3,11 @@ import { ResourcesConfig } from "aws-amplify";
 const awsExports: ResourcesConfig = {
   Auth: {
     Cognito: {
-      userPoolId: "your-user-pool-id",
-      userPoolClientId: "your-user-pool-client-id",
-      identityPoolId: "your-identity-pool-id",
+      userPoolId: process.env.REACT_APP_USER_POOL_ID || "",
+      userPoolClientId: process.env.REACT_APP_USER_POOL_CLIENT_ID || "",
+      identityPoolId: process.env.REACT_APP_IDENTITY_POOL_ID || "",
       loginWith: {
-        username: true, // or email: true
+        email: true,
       },
     },
   },
