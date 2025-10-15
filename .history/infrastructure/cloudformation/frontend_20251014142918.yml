@@ -1,0 +1,4 @@
+aws cloudformation describe-stacks \
+  --stack-name production-frontend-stack \
+  --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' \
+  --output text

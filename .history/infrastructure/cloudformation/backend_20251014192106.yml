@@ -1,0 +1,601 @@
+# BACKEND.YML - Full CloudFormation Template
+# This creates all Lambda functions and API Gateway endpoints
+# Review this before Kent deploys!
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Complete backend infrastructure - All Lambda functions and API Gateway endpoints'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  
+  ProjectName:
+    Type: String
+    Default: file-storage
+
+Resources:
+  # ============================================
+  # IAM ROLE FOR LAMBDA FUNCTIONS
+  # This role gives Lambda access to S3, DynamoDB, and CloudWatch Logs
+  # ============================================
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-lambda-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        # S3 Access Policy
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::file-storage-${Environment}-${AWS::AccountId}/*'
+                  - !Sub 'arn:aws:s3:::file-storage-${Environment}-${AWS::AccountId}'
+        # DynamoDB Access Policy
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/FilesTable-${Environment}'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/FilesTable-${Environment}/index/*'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/SharedLinksTable-${Environment}'
+
+  # ============================================
+  # LAMBDA FUNCTIONS (5 total)
+  # These have placeholder code - Josh will implement the real logic
+  # ============================================
+
+  # 1. Upload File Lambda
+  UploadFileLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-upload-file-${Environment}'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          from datetime import datetime
+          
+          s3 = boto3.client('s3')
+          
+          def handler(event, context):
+              print("Upload file request received")
+              print(f"Event: {json.dumps(event)}")
+              
+              return {
+                  'statusCode': 200,
+                  'headers': {
+                      'Access-Control-Allow-Origin': '*',
+                      'Access-Control-Allow-Headers': 'Content-Type',
+                      'Access-Control-Allow-Methods': 'POST,OPTIONS'
+                  },
+                  'body': json.dumps({
+                      'message': 'Upload endpoint ready - Josh will implement',
+                      'uploadUrl': 'https://placeholder-presigned-url.com'
+                  })
+              }
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          BUCKET_NAME: !Sub 'file-storage-${Environment}-${AWS::AccountId}'
+          TABLE_NAME: !Sub 'files-${Environment}'
+      Timeout: 30
+      MemorySize: 256
+
+  # 2. List Files Lambda
+  ListFilesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-list-files-${Environment}'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          
+          dynamodb = boto3.resource('dynamodb')
+          
+          def handler(event, context):
+              print("List files request received")
+              print(f"Event: {json.dumps(event)}")
+              
+              return {
+                  'statusCode': 200,
+                  'headers': {
+                      'Access-Control-Allow-Origin': '*',
+                      'Access-Control-Allow-Headers': 'Content-Type',
+                      'Access-Control-Allow-Methods': 'GET,OPTIONS'
+                  },
+                  'body': json.dumps({
+                      'message': 'List endpoint ready - Josh will implement',
+                      'files': []
+                  })
+              }
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          TABLE_NAME: !Sub 'files-${Environment}'
+      Timeout: 30
+      MemorySize: 256
+
+  # 3. Download File Lambda
+  DownloadFileLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-download-file-${Environment}'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          
+          s3 = boto3.client('s3')
+          
+          def handler(event, context):
+              print("Download file request received")
+              print(f"Event: {json.dumps(event)}")
+              
+              file_id = event.get('pathParameters', {}).get('fileId', 'unknown')
+              
+              return {
+                  'statusCode': 200,
+                  'headers': {
+                      'Access-Control-Allow-Origin': '*',
+                      'Access-Control-Allow-Headers': 'Content-Type',
+                      'Access-Control-Allow-Methods': 'GET,OPTIONS'
+                  },
+                  'body': json.dumps({
+                      'message': f'Download endpoint ready for file {file_id}',
+                      'downloadUrl': 'https://placeholder-presigned-url.com'
+                  })
+              }
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          BUCKET_NAME: !Sub 'file-storage-${Environment}-${AWS::AccountId}'
+          TABLE_NAME: !Sub 'files-${Environment}'
+      Timeout: 30
+      MemorySize: 256
+
+  # 4. Delete File Lambda
+  DeleteFileLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-delete-file-${Environment}'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          
+          s3 = boto3.client('s3')
+          dynamodb = boto3.resource('dynamodb')
+          
+          def handler(event, context):
+              print("Delete file request received")
+              print(f"Event: {json.dumps(event)}")
+              
+              file_id = event.get('pathParameters', {}).get('fileId', 'unknown')
+              
+              return {
+                  'statusCode': 200,
+                  'headers': {
+                      'Access-Control-Allow-Origin': '*',
+                      'Access-Control-Allow-Headers': 'Content-Type',
+                      'Access-Control-Allow-Methods': 'DELETE,OPTIONS'
+                  },
+                  'body': json.dumps({
+                      'message': f'Delete endpoint ready for file {file_id}'
+                  })
+              }
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          BUCKET_NAME: !Sub 'file-storage-${Environment}-${AWS::AccountId}'
+          TABLE_NAME: !Sub 'files-${Environment}'
+      Timeout: 30
+      MemorySize: 256
+
+  # 5. Share File Lambda
+  ShareFileLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-share-file-${Environment}'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import uuid
+          
+          dynamodb = boto3.resource('dynamodb')
+          
+          def handler(event, context):
+              print("Share file request received")
+              print(f"Event: {json.dumps(event)}")
+              
+              file_id = event.get('pathParameters', {}).get('fileId', 'unknown')
+              share_token = str(uuid.uuid4())
+              
+              return {
+                  'statusCode': 200,
+                  'headers': {
+                      'Access-Control-Allow-Origin': '*',
+                      'Access-Control-Allow-Headers': 'Content-Type',
+                      'Access-Control-Allow-Methods': 'POST,OPTIONS'
+                  },
+                  'body': json.dumps({
+                      'message': f'Share endpoint ready for file {file_id}',
+                      'shareLink': f'https://placeholder.com/share/{share_token}'
+                  })
+              }
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          TABLE_NAME: !Sub 'files-${Environment}'
+      Timeout: 30
+      MemorySize: 256
+
+  # ============================================
+  # API GATEWAY
+  # ============================================
+
+  MyApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${ProjectName}-api-${Environment}'
+      Description: File Storage API
+
+  # ============================================
+  # API GATEWAY RESOURCES (URL paths)
+  # ============================================
+
+  # /files
+  FilesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !GetAtt MyApiGateway.RootResourceId
+      PathPart: files
+
+  # /files/{fileId}
+  FileIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !Ref FilesResource
+      PathPart: '{fileId}'
+
+  # /files/{fileId}/share
+  ShareResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !Ref FileIdResource
+      PathPart: share
+
+  # ============================================
+  # POST /files (Upload)
+  # ============================================
+
+  UploadFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FilesResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UploadFileLambda.Arn}/invocations'
+
+  UploadFileOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FilesResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  UploadFileLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UploadFileLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
+  # ============================================
+  # GET /files (List)
+  # ============================================
+
+  ListFilesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FilesResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListFilesLambda.Arn}/invocations'
+
+  ListFilesOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FilesResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  ListFilesLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ListFilesLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
+  # ============================================
+  # GET /files/{fileId} (Download)
+  # ============================================
+
+  DownloadFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FileIdResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DownloadFileLambda.Arn}/invocations'
+
+  DownloadFileOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FileIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  DownloadFileLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DownloadFileLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
+  # ============================================
+  # DELETE /files/{fileId}
+  # ============================================
+
+  DeleteFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FileIdResource
+      HttpMethod: DELETE
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteFileLambda.Arn}/invocations'
+
+  DeleteFileOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FileIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              method.response.header.Access-Control-Allow-Methods: "'DELETE,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  DeleteFileLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeleteFileLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
+  # ============================================
+  # POST /files/{fileId}/share
+  # ============================================
+
+  ShareFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref ShareResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ShareFileLambda.Arn}/invocations'
+
+  ShareFileOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref ShareResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  ShareFileLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ShareFileLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
+  # ============================================
+  # API DEPLOYMENT
+  # ============================================
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - UploadFileMethod
+      - ListFilesMethod
+      - DownloadFileMethod
+      - DeleteFileMethod
+      - ShareFileMethod
+      - UploadFileOptionsMethod
+      - ListFilesOptionsMethod
+      - DownloadFileOptionsMethod
+      - DeleteFileOptionsMethod
+      - ShareFileOptionsMethod
+    Properties:
+      RestApiId: !Ref MyApiGateway
+
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: !Ref Environment
+      RestApiId: !Ref MyApiGateway
+      DeploymentId: !Ref ApiGatewayDeployment
+      Description: !Sub '${Environment} stage'
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${MyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${ProjectName}-api-url-${Environment}'
+
+  ApiId:
+    Description: API Gateway ID
+    Value: !Ref MyApiGateway
+    Export:
+      Name: !Sub '${ProjectName}-api-id-${Environment}'
+
+  LambdaRoleArn:
+    Description: Lambda execution role ARN
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-lambda-role-${Environment}'

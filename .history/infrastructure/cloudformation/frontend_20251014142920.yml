@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates a private S3 bucket and a CloudFront distribution to host the frontend.'
+
+Resources:
+  # 1. The S3 bucket, now configured to be private.
+  S3HostingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # 2. The Origin Access Identity (OAI), which acts as a special user for CloudFront.
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: 'OAI for the document storage app frontend'
+
+  # 3. A new bucket policy that ONLY allows the OAI to read files.
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3HostingBucket
+      PolicyDocument:
+        Statement:
+          - Sid: GrantCloudFrontRead
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+            Action: s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${S3HostingBucket}/*'
+
+  # 4. The CloudFront distribution, now linked to the OAI.
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt S3HostingBucket.RegionalDomainName
+            Id: s3origin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        Enabled: true
+        DefaultRootObject: index.html
+        Comment: 'CloudFront distribution for the document storage app'
+        DefaultCacheBehavior:
+          TargetOriginId: s3origin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+
+Outputs:
+  BucketName:
+    Description: "Name of the S3 bucket"
+    Value: !Ref S3HostingBucket
+  CloudFrontURL:
+    Description: "URL for the CloudFront distribution"
+    Value: !GetAtt CloudFrontDistribution.DomainName

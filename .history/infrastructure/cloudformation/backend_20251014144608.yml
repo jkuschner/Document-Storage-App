@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates backend resources including Lambda, IAM roles, and API Gateway with a deployment stage.'
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  ListFilesLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: list-files-function
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          def handler(event, context):
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Hello from the list_files Lambda!')
+              }
+
+  MyApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: FileStorageApi
+
+  FilesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !GetAtt MyApiGateway.RootResourceId
+      PathPart: files
+
+  FilesGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref FilesResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListFilesLambdaFunction.Arn}/invocations"
+
+  ApiGatewayLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ListFilesLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*"
+
+  # --- NEW: API Gateway Deployment and Stage Resources ---
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    # This DependsOn ensures the deployment happens AFTER the method is created.
+    DependsOn: FilesGetMethod
+    Properties:
+      RestApiId: !Ref MyApiGateway
+
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: prod # This is the 'prod' in your URL
+      RestApiId: !Ref MyApiGateway
+      DeploymentId: !Ref ApiGatewayDeployment
+
+Outputs:
+  LambdaFunctionName:
+    Description: "Name of the ListFiles Lambda function"
+    Value: !Ref ListFilesLambdaFunction
+  ApiGatewayEndpoint:
+    Description: "Endpoint URL for the API Gateway"
+    # This is updated to correctly reference the new stage
+    Value: !Sub "https://${MyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}"
