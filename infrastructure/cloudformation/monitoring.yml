@@ -1,0 +1,193 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Monitoring infrastructure - CloudWatch dashboards and alarms'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  
+  ProjectName:
+    Type: String
+    Default: file-storage
+  
+  AlarmEmail:
+    Type: String
+    Default: your-email@example.com
+    Description: Email address for alarm notifications
+
+Resources:
+  # SNS Topic for Alarms
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-alarms-${Environment}'
+      DisplayName: File Storage System Alarms
+      Subscription:
+        - Endpoint: !Ref AlarmEmail
+          Protocol: email
+
+  # Lambda Error Alarm - Upload
+  UploadLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-upload-lambda-errors-${Environment}'
+      AlarmDescription: Alert when upload Lambda has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${ProjectName}-upload-file-${Environment}'
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  # Lambda Error Alarm - List
+  ListLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-list-lambda-errors-${Environment}'
+      AlarmDescription: Alert when list Lambda has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${ProjectName}-list-files-${Environment}'
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  # Lambda Error Alarm - Download
+  DownloadLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-download-lambda-errors-${Environment}'
+      AlarmDescription: Alert when download Lambda has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${ProjectName}-download-file-${Environment}'
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  # API Gateway 5xx Error Alarm
+  APIGateway5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-api-5xx-errors-${Environment}'
+      AlarmDescription: Alert on API Gateway 5xx errors
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  # API Gateway High Latency Alarm
+  APIGatewayLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-api-high-latency-${Environment}'
+      AlarmDescription: Alert when API latency is high
+      MetricName: Latency
+      Namespace: AWS/ApiGateway
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 2000
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  # CloudWatch Dashboard
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${ProjectName}-dashboard-${Environment}'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", {"stat": "Sum", "label": "Total Invocations"}],
+                  [".", "Errors", {"stat": "Sum", "label": "Errors"}],
+                  [".", "Duration", {"stat": "Average", "label": "Avg Duration"}]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Lambda Functions Overview",
+                "yAxis": {
+                  "left": {
+                    "label": "Count"
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/ApiGateway", "Count", {"stat": "Sum", "label": "Total Requests"}],
+                  [".", "4XXError", {"stat": "Sum", "label": "4XX Errors"}],
+                  [".", "5XXError", {"stat": "Sum", "label": "5XX Errors"}]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "API Gateway Requests"
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/ApiGateway", "Latency", {"stat": "Average", "label": "Avg Latency"}]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "API Gateway Latency"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  AlarmTopicArn:
+    Description: SNS Topic ARN for alarms
+    Value: !Ref AlarmTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-alarm-topic'
+  
+  DashboardURL:
+    Description: CloudWatch Dashboard URL
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${MonitoringDashboard}'
+    Export:
+      Name: !Sub '${AWS::StackName}-dashboard-url'
