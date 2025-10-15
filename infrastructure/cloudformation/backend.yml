@@ -523,16 +523,16 @@ Outputs:
     Description: API Gateway endpoint URL
     Value: !Sub 'https://${MyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
     Export:
-      Name: !Sub '${ProjectName}-api-url-${Environment}'
+      Name: !Sub '${AWS::StackName}-api-url'
 
   ApiId:
     Description: API Gateway ID
     Value: !Ref MyApiGateway
     Export:
-      Name: !Sub '${ProjectName}-api-id-${Environment}'
+      Name: !Sub '${AWS::StackName}-api-id'
 
   LambdaRoleArn:
     Description: Lambda execution role ARN
     Value: !GetAtt LambdaExecutionRole.Arn
     Export:
-      Name: !Sub '${ProjectName}-lambda-role-${Environment}'
+      Name: !Sub '${AWS::StackName}-lambda-role'
