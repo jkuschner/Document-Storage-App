@@ -6,7 +6,7 @@ import boto3
 from moto import mock_aws
 
 # Import the handler function
-from lambda_functions.list_files.handler import lambda_handler
+from lambda_functions.list_files.index import lambda_handler
 
 # name must match handler's default or environment variable
 TEST_BUCKET_NAME = 'test-dummy-bucket'

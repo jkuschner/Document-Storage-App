@@ -5,7 +5,7 @@ import pytest
 import boto3
 from moto import mock_aws
 
-from lambda_functions.delete_file.handler import lambda_handler
+from lambda_functions.delete_file.index import lambda_handler
 
 TEST_BUCKET_NAME = 'test-dummy-bucket'
 TEST_REGION = 'us-west-2'

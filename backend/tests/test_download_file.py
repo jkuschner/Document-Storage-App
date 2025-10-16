@@ -6,7 +6,7 @@ import boto3
 import base64
 from moto import mock_aws
 
-from lambda_functions.download_file.handler import lambda_handler
+from lambda_functions.download_file.index import lambda_handler
 
 TEST_BUCKET_NAME = 'test-dummy-bucket'
 TEST_REGION = 'us-west-2'

@@ -1,4 +1,4 @@
-# lambda_functions/list_files/handler.py
+# lambda_functions/list_files/index.py
 import json
 import os
 import boto3

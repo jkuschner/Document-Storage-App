@@ -1,4 +1,4 @@
-# lambda functions/delete_file/handler.py
+# lambda functions/delete_file/index.py
 import json
 import os
 import boto3

@@ -7,7 +7,7 @@ import boto3
 from moto import mock_aws
 
 # import hanlder function
-from lambda_functions.upload_file.handler import lambda_handler
+from lambda_functions.upload_file.index import lambda_handler
 
 TEST_BUCKET_NAME = 'test-dummy-bucket'
 TEST_REGION = 'us-west-2'

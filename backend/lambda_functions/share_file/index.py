@@ -1,4 +1,4 @@
-# lambda_functions/share_file/handler.py
+# lambda_functions/share_file/index.py
 import json
 import os
 import boto3
