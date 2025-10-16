@@ -1,7 +1,6 @@
 # lambda_functions/upload_file/handler.py
 import json
 import os
-import base64
 import boto3
 
 S3_CLIENT = boto3.client('s3')
@@ -9,51 +8,48 @@ BUCKET_NAME = os.environ.get('BUCKET_NAME', 'test-dummy-bucket')
 
 def lambda_handler(event, context):
     """
-    Handles file uploads by decoding the Base64 body and saving it to S3.
-    Expects 'filename' in the query string parameters.
+    Handles file uploads by returning a presigned PUT URL that allows the client
+    to upload their file directly to S3
     """
     try:
-        # Get filename from query string parameters
-        file_name = event.get('queryStringParameters', {}).get('filename')
+        # Get metadata from the request body
+        request_body = json.loads(event.get('body', '{}'))
+        file_name = request_body.get('filename')
+        content_type = request_body.get('contentType', 'application/octet-stream')
+
         if not file_name:
             return {
-                'statusCode': 400,
-                'body': json.dumps({
-                    'message': 'Missing filename query parameter.'
-                    })
+                'statusCode': 400, 
+                'body': json.dumps({'message': 'Missing filename.'})
             }
 
-        # get base64 encoded body
-        encoded_body = event.get('body')
-        if not encoded_body:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({'message': 'Missing request body.'})
-            }
-
-        # decode the body
-        file_content = base64.b64decode(encoded_body)
-
-        # upload decoded content to S3
-        S3_CLIENT.put_object(
-            Bucket=BUCKET_NAME,
-            Key=file_name,
-            Body=file_content
+        # Generate the PUT presigned URL
+        upload_url = S3_CLIENT.generate_presigned_url(
+            ClientMethod='put_object',
+            Params={
+                'Bucket': BUCKET_NAME, 
+                'Key': file_name,
+                # Crucial: Tells S3 what Content-Type to expect from the client upload
+                'ContentType': content_type 
+            },
+            ExpiresIn=3600 
         )
 
         return {
-            'statusCode': 201,
+            'statusCode': 200,
             'body': json.dumps({
-                'message': f'File {file_name} uploaded successfully'
+                'message': 'Pre-signed upload URL generated successfully.',
+                'uploadUrl': upload_url,
+                'fileKey': file_name
             })
         }
-    
+
     except Exception as e:
-        print(f"Error uploading file: {e}")
+        print(f"Error generating presigned URL: {e}")
         return {
             'statusCode': 500,
             'body': json.dumps({
-                'message': 'Internal server error while uploading file.',
+                'message': 'Internal server error.',
                 'error': str(e)
             })
         }
