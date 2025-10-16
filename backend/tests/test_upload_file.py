@@ -15,17 +15,52 @@ TEST_FILENAME = 'document.txt'
 TEST_CONTENT = 'This is the file content for testing upload_file.'
 
 # mock API Gateway event
+
 MOCK_EVENT = {
-    'queryStringParameters': {'filename': TEST_FILENAME},
-    # base64 encode content because API Gateway does this automatically
-    'body': base64.b64encode(TEST_CONTENT.encode('utf-8')).decode('utf-8')
+    'body': json.dumps({
+        'filename': TEST_FILENAME,
+        'contentType': 'application/pdf'
+    })
 }
 
 @mock_aws
+def test_upload_file_returns_presigned_url():
+    """
+    Tests that the handler successfully generates a PUT presigned URL.
+    """
+    # Mock S3 bucket and environment
+    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    s3_client.create_bucket(
+        Bucket=TEST_BUCKET_NAME,
+        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    )
+    os.environ['BUCKET_NAME'] = TEST_BUCKET_NAME 
+    
+    # call the handler
+    response = lambda_handler(MOCK_EVENT, None)
+    
+    # check status code
+    assert response['statusCode'] == 200
+    body_data = json.loads(response['body'])
+    
+    # Check that a URL was returned
+    assert 'uploadUrl' in body_data
+    generated_url = body_data['uploadUrl']
+    
+    # Verify the URL structure
+    assert TEST_BUCKET_NAME in generated_url
+    assert TEST_FILENAME in generated_url
+    
+    # Check for the key S3 parameters (Signature/Expires) to ensure it's a valid presigned URL
+    assert 'Signature=' in generated_url or 'X-Amz-Signature=' in generated_url
+    assert 'Expires=' in generated_url or 'X-Amz-Expires=' in generated_url
+
+"""
+@mock_aws
 def test_upload_file_success():
-    """
-    Tests successful file upload, verifying the file exists in mock S3 bucket.
-    """
+
+    #Tests successful file upload, verifying the file exists in mock S3 bucket.
+
     # create mock S3 environment
     s3_client = boto3.client('s3', region_name=TEST_REGION)
     s3_client.create_bucket(
@@ -51,3 +86,5 @@ def test_upload_file_success():
         assert file_content == TEST_CONTENT
     except s3_client.exceptions.NoSuchKey:
         pytest.fail(f"File {TEST_FILENAME} was not found in the bucket after upload.")
+
+"""
