@@ -33,7 +33,7 @@ export default function FileList() {
     setCurrentFolder(folder);
   }
 
-  const folders = Array.from(new Set(files.map((f) => f.folder))).filter((f) => f !== currentFolder);
+  const folders = Array.from(new Set(files.map((f) => f.folder).filter((folder): folder is string => folder !== undefined))).filter((f) => f !== currentFolder);
 
   return (
     <div className="p-4">
@@ -56,7 +56,7 @@ export default function FileList() {
         {folders.map((f) => (
           <button
             key={f}
-            onClick={() => navigateTo(f)}
+            onClick={() => f && navigateTo(f)}
             className="text-blue-500 hover:underline mr-2"
           >
             Open {f}
