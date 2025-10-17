@@ -1,0 +1,83 @@
+name: Basic Test Pipeline
+
+on:
+  pull_request:
+  push:
+    branches: [ "week-2-test-pipeline"]
+
+jobs:
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Node Setup (incl. caching)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies 
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Frontend tests
+        working-directory: frontend
+        run: |
+          mkdir -p test-results
+          npm test -- --ci --reporters=default --reporters=jest-junit
+        env:
+          JEST_JUNIT_OUTPUT_DIR: test-results
+          CI: true
+
+      - name: Upload test result reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: frontend/test-results/
+
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Python Setup (incl. caching)
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+          cache: 'pip'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run backend tests (Pytest)
+        working-directory: backend
+        run: |
+          mkdir -p test-results
+          pytest --maxfail=1 --disable-warnings --junitxml=test-results/results.xml
+
+      - name: Upload backend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/test-results/
+
+  security-scan:
+    name: Security & Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
