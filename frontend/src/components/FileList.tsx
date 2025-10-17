@@ -19,25 +19,20 @@ export default function FileList() {
 
   const [currentFolder, setCurrentFolder] = useState<string>("root");
 
-  // Filter files based on the current folder
   const visibleFiles = files.filter((file) => file.folder === currentFolder);
 
-  // Delete handler
   function handleDelete(id: number) {
     setFiles((prev) => prev.filter((file) => file.id !== id));
   }
 
-  //  Mock download handler
   function handleDownload(fileName: string) {
     alert(`Downloading ${fileName}...`);
   }
 
-  // Navigate between folders (mock for now)
   function navigateTo(folder: string) {
     setCurrentFolder(folder);
   }
 
-  // Get unique folders for display
   const folders = Array.from(new Set(files.map((f) => f.folder))).filter((f) => f !== currentFolder);
 
   return (
