@@ -21,11 +21,10 @@ jobs:
 
       - name: Install dependencies 
         working-directory: frontend
-        run: npm ci
+        run: |
+          npm ci
+          npm install react-router-dom --no-save
 
-      - name: Install react-router-dom
-        working-directory: frontend
-        run: npm install react-router-dom
 
       - name: Install jest-junit
         working-directory: frontend
@@ -71,6 +70,10 @@ jobs:
         run: |
           mkdir -p test-results
           pytest --maxfail=1 --disable-warnings --junitxml=test-results/results.xml
+        env:
+          AWS_ACCESS_KEY_ID: fake
+          AWS_SECRET_ACCESS_KEY: fake
+          AWS_DEFAULT_REGION: us-east-1
 
       - name: Upload backend test results
         if: always()
