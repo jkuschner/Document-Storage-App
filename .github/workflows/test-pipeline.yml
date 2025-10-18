@@ -19,15 +19,11 @@ jobs:
           node-version: 18
           cache: 'npm'
 
-      - name: Install dependencies 
+      - name: Install Dependencies & Run Frontend tests
         working-directory: frontend
         run: |
           npm ci
           npm install react-router-dom jest-junit --no-save
-
-      - name: Run Frontend tests
-        working-directory: frontend
-        run: |
           mkdir -p test-results
           npm test -- --ci --reporters=default --reporters=jest-junit
         env:
