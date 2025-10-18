@@ -23,12 +23,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npm install react-router-dom --no-save
-
-
-      - name: Install jest-junit
-        working-directory: frontend
-        run: npm install --save-dev jest-junit
+          npm install react-router-dom jest-junit --no-save
 
       - name: Run Frontend tests
         working-directory: frontend
