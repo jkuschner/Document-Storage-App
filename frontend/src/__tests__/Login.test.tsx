@@ -1,4 +1,4 @@
-/*
+
 import { render, screen, fireEvent } from "@testing-library/react";
 import Login from "../../components/Auth/Login.tsx";
 import "@testing-library/jest-dom";
@@ -14,4 +14,3 @@ test("handles input changes", () => {
   fireEvent.change(emailInput, { target: { value: "test@example.com" } });
   expect((emailInput as HTMLInputElement).value).toBe("test@example.com");
 });
-*/
