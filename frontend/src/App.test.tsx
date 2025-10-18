@@ -18,6 +18,6 @@ test('renders login page', () => {
       <App />
   );
 
-  const loginHeading = screen.getByText(/login/i);
+  const loginHeading = screen.getByRole("heading", { name: /login/i });
   expect(loginHeading).toBeInTheDocument();
 });

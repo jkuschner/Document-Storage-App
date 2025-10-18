@@ -10,7 +10,10 @@ test("renders login form", () => {
       <Login />
     </MemoryRouter>
   );
-  expect(screen.getByText(/Login/i)).toBeInTheDocument();
+  /*expect(screen.getByText(/Login/i)).toBeInTheDocument();*/
+  const loginHeading = screen.getByRole("heading", { name: /login/i });
+  expect(loginHeading).toBeInTheDocument();
+
 });
 
 test("handles input changes", () => {
@@ -19,7 +22,11 @@ test("handles input changes", () => {
       <Login />
     </MemoryRouter>
   );
-  const emailInput = screen.getByLabelText(/email/i);
+  /*const emailInput = screen.getByLabelText(/email/i);
   fireEvent.change(emailInput, { target: { value: "test@example.com" } });
   expect((emailInput as HTMLInputElement).value).toBe("test@example.com");
+  */
+  const emailInput = screen.getByRole("textbox", { name: /email/i }) as HTMLInputElement;
+  fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+  expect(emailInput.value).toBe("test@example.com");
 });
