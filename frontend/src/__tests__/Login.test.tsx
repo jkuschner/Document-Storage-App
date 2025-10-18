@@ -1,6 +1,6 @@
 
 import { render, screen, fireEvent } from "@testing-library/react";
-import Login from "../../components/Auth/Login.tsx";
+import Login from "../components/Auth/Login.tsx";
 import "@testing-library/jest-dom";
 
 test("renders login form", () => {
