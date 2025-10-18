@@ -1,4 +1,3 @@
-
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Login from "../components/Auth/Login.tsx";
@@ -10,16 +9,10 @@ test("renders login form", () => {
       <Login />
     </MemoryRouter>
   );
-  /*expect(screen.getByText(/Login/i)).toBeInTheDocument();*/
-  
-  /*const loginHeading = screen.getByRole("heading", { name: /login/i });
-  expect(loginHeading).toBeInTheDocument();*/
 
-  const emailInput = screen.getByRole("textbox", { name: /email/i }) || screen.getByPlaceholderText(/email/i) || document.querySelector('input[type="email"]');
+  const emailInput = screen.queryByLabelText(/email/i) || screen.queryByPlaceholderText(/email/i) || document.querySelector('input[type="email"]');
 
   expect(emailInput).toBeInTheDocument();
-
-
 });
 
 test("handles input changes", () => {
@@ -28,24 +21,14 @@ test("handles input changes", () => {
       <Login />
     </MemoryRouter>
   );
-  /*const emailInput = screen.getByLabelText(/email/i);
-  fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+
+  const emailInput = screen.queryByLabelText(/email/i) || screen.queryByPlaceholderText(/email/i) || document.querySelector('input[type="email"]');
+
+  expect(emailInput).toBeInTheDocument();
+
+  fireEvent.change(emailInput as HTMLInputElement, {
+    target: { value: "test@example.com" },
+  });
+
   expect((emailInput as HTMLInputElement).value).toBe("test@example.com");
-  */
-
-  /*const emailInput = screen.getByRole("textbox", { name: /email/i }) as HTMLInputElement;
-  fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-  expect(emailInput.value).toBe("test@example.com");*/
-
-  /*const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
-  fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-  expect(emailInput.value).toBe("test@example.com");*/
-
-  const emailInput = screen.getByRole("textbox", { name: /email/i }) || screen.getByPlaceholderText(/email/i) || document.querySelector('input[type="email"]');
-
-  if (emailInput) {
-    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-    expect((emailInput as HTMLInputElement).value).toBe("test@example.com");
-  }
-
 });
