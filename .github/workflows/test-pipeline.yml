@@ -16,7 +16,7 @@ jobs:
       - name: Node Setup (incl. caching)
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
       - name: Install Dependencies & Run Frontend tests
