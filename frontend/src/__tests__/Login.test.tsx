@@ -26,7 +26,13 @@ test("handles input changes", () => {
   fireEvent.change(emailInput, { target: { value: "test@example.com" } });
   expect((emailInput as HTMLInputElement).value).toBe("test@example.com");
   */
-  const emailInput = screen.getByRole("textbox", { name: /email/i }) as HTMLInputElement;
+
+  /*const emailInput = screen.getByRole("textbox", { name: /email/i }) as HTMLInputElement;
+  fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+  expect(emailInput.value).toBe("test@example.com");*/
+
+  const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
   fireEvent.change(emailInput, { target: { value: "test@example.com" } });
   expect(emailInput.value).toBe("test@example.com");
+
 });
