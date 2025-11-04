@@ -20,7 +20,7 @@ Resources:
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-lambda-role-${Environment}'
+      RoleName: !Sub '${AWS::StackName}-lambda-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -68,7 +68,7 @@ Resources:
   UploadFileLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-upload-file-${Environment}'
+      FunctionName: !Sub '${AWS::StackName}-upload-file'
       Runtime: python3.9
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -87,7 +87,7 @@ Resources:
   ListFilesLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-list-files-${Environment}'
+      FunctionName: !Sub '${AWS::StackName}-list-files'
       Runtime: python3.9
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -106,7 +106,7 @@ Resources:
   DownloadFileLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-download-file-${Environment}'
+      FunctionName: !Sub '${AWS::StackName}-download-file'
       Runtime: python3.9
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -125,7 +125,7 @@ Resources:
   DeleteFileLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-delete-file-${Environment}'
+      FunctionName: !Sub '${AWS::StackName}-delete-file'
       Runtime: python3.9
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -144,11 +144,11 @@ Resources:
   ShareFileLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-share-file-${Environment}'
+      FunctionName: !Sub '${AWS::StackName}-share-file'
       Runtime: python3.9
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-        Code:
+      Code:
         S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/share_file/${Environment}/share_file.zip'
       Environment:
