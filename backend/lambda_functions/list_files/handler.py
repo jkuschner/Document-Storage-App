@@ -1,44 +1,56 @@
-# lambda_functions/list_files/handler.py
 import json
 import os
 import boto3
+from boto3.dynamodb.conditions import Key
 
-S3_CLIENT = boto3.client('s3')
-# placeholder bucket name to be define via environment variables during deployment
-BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'test-dummy-bucket')
+# Initialize DynamoDB resource
+dynamodb = boto3.resource('dynamodb')
+FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+files_table = dynamodb.Table(FILES_TABLE_NAME)
+
 
 def lambda_handler(event, context):
     """
-    Lists files in the configured S3 bucket.
+    Lists all files for a user by querying DynamoDB.
     """
     try:
-        # Call the S3 API to list objects in bucket
-        response = S3_CLIENT.list_objects_v2(Bucket=BUCKET_NAME)
-
-        # Exctract file keys (filenames) from the response
-        file_keys = [
-            item['Key']
-            for item in response.get('Contents', [])
-        ]
-
-        # return successful response with file list
+        # Extract userId from request
+        # TODO: In production, get this from Cognito authorizer claims
+        # For now, check query parameters or use a default
+        query_params = event.get('queryStringParameters') or {}
+        user_id = query_params.get('userId', 'test-user')
+        
+        # Query DynamoDB for user's files
+        response = files_table.query(
+            KeyConditionExpression=Key('userId').eq(user_id)
+        )
+        
+        files = response.get('Items', [])
+        
         return {
             'statusCode': 200,
             'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'GET,OPTIONS',
                 'Content-Type': 'application/json'
             },
             'body': json.dumps({
-                'message': f'Successfully listed {len(file_keys)} files.',
-                'files': file_keys
+                'files': files,
+                'count': len(files)
             })
         }
-
+        
     except Exception as e:
-        print(f"Error listing files: {e}")
+        print(f"Error listing files: {str(e)}")
         return {
             'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
             'body': json.dumps({
-                'message': 'Internal server error while listing files.',
-                'error': str(e)
+                'error': 'Failed to list files',
+                'message': str(e)
             })
         }

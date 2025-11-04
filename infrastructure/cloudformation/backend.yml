@@ -70,37 +70,17 @@ Resources:
     Properties:
       FunctionName: !Sub '${ProjectName}-upload-file-${Environment}'
       Runtime: python3.9
-      Handler: index.handler
+      Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        ZipFile: |
-          import json
-          import boto3
-          from datetime import datetime
-          
-          s3 = boto3.client('s3')
-          
-          def handler(event, context):
-              print("Upload file request received")
-              print(f"Event: {json.dumps(event)}")
-              
-              return {
-                  'statusCode': 200,
-                  'headers': {
-                      'Access-Control-Allow-Origin': '*',
-                      'Access-Control-Allow-Headers': 'Content-Type',
-                      'Access-Control-Allow-Methods': 'POST,OPTIONS'
-                  },
-                  'body': json.dumps({
-                      'message': 'Upload endpoint ready - Josh will implement',
-                      'uploadUrl': 'https://placeholder-presigned-url.com'
-                  })
-              }
+        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/upload_file/${Environment}/upload_file.zip'
       Environment:
         Variables:
+          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
-          BUCKET_NAME: !Sub 'file-storage-${Environment}-${AWS::AccountId}'
-          TABLE_NAME: !Sub 'files-${Environment}'
       Timeout: 30
       MemorySize: 256
 
@@ -109,35 +89,17 @@ Resources:
     Properties:
       FunctionName: !Sub '${ProjectName}-list-files-${Environment}'
       Runtime: python3.9
-      Handler: index.handler
+      Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        ZipFile: |
-          import json
-          import boto3
-          
-          dynamodb = boto3.resource('dynamodb')
-          
-          def handler(event, context):
-              print("List files request received")
-              print(f"Event: {json.dumps(event)}")
-              
-              return {
-                  'statusCode': 200,
-                  'headers': {
-                      'Access-Control-Allow-Origin': '*',
-                      'Access-Control-Allow-Headers': 'Content-Type',
-                      'Access-Control-Allow-Methods': 'GET,OPTIONS'
-                  },
-                  'body': json.dumps({
-                      'message': 'List endpoint ready - Josh will implement',
-                      'files': []
-                  })
-              }
+        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/list_files/${Environment}/list_files.zip'
       Environment:
         Variables:
+          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
-          TABLE_NAME: !Sub 'files-${Environment}'
       Timeout: 30
       MemorySize: 256
 
@@ -146,38 +108,17 @@ Resources:
     Properties:
       FunctionName: !Sub '${ProjectName}-download-file-${Environment}'
       Runtime: python3.9
-      Handler: index.handler
+      Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        ZipFile: |
-          import json
-          import boto3
-          
-          s3 = boto3.client('s3')
-          
-          def handler(event, context):
-              print("Download file request received")
-              print(f"Event: {json.dumps(event)}")
-              
-              file_id = event.get('pathParameters', {}).get('fileId', 'unknown')
-              
-              return {
-                  'statusCode': 200,
-                  'headers': {
-                      'Access-Control-Allow-Origin': '*',
-                      'Access-Control-Allow-Headers': 'Content-Type',
-                      'Access-Control-Allow-Methods': 'GET,OPTIONS'
-                  },
-                  'body': json.dumps({
-                      'message': f'Download endpoint ready for file {file_id}',
-                      'downloadUrl': 'https://placeholder-presigned-url.com'
-                  })
-              }
+        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/download_file/${Environment}/download_file.zip'
       Environment:
         Variables:
+          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
-          BUCKET_NAME: !Sub 'file-storage-${Environment}-${AWS::AccountId}'
-          TABLE_NAME: !Sub 'files-${Environment}'
       Timeout: 30
       MemorySize: 256
 
@@ -186,38 +127,17 @@ Resources:
     Properties:
       FunctionName: !Sub '${ProjectName}-delete-file-${Environment}'
       Runtime: python3.9
-      Handler: index.handler
+      Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        ZipFile: |
-          import json
-          import boto3
-          
-          s3 = boto3.client('s3')
-          dynamodb = boto3.resource('dynamodb')
-          
-          def handler(event, context):
-              print("Delete file request received")
-              print(f"Event: {json.dumps(event)}")
-              
-              file_id = event.get('pathParameters', {}).get('fileId', 'unknown')
-              
-              return {
-                  'statusCode': 200,
-                  'headers': {
-                      'Access-Control-Allow-Origin': '*',
-                      'Access-Control-Allow-Headers': 'Content-Type',
-                      'Access-Control-Allow-Methods': 'DELETE,OPTIONS'
-                  },
-                  'body': json.dumps({
-                      'message': f'Delete endpoint ready for file {file_id}'
-                  })
-              }
+        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/delete_file/${Environment}/delete_file.zip'
       Environment:
         Variables:
+          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
-          BUCKET_NAME: !Sub 'file-storage-${Environment}-${AWS::AccountId}'
-          TABLE_NAME: !Sub 'files-${Environment}'
       Timeout: 30
       MemorySize: 256
 
@@ -226,39 +146,16 @@ Resources:
     Properties:
       FunctionName: !Sub '${ProjectName}-share-file-${Environment}'
       Runtime: python3.9
-      Handler: index.handler
+      Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          import uuid
-          
-          dynamodb = boto3.resource('dynamodb')
-          
-          def handler(event, context):
-              print("Share file request received")
-              print(f"Event: {json.dumps(event)}")
-              
-              file_id = event.get('pathParameters', {}).get('fileId', 'unknown')
-              share_token = str(uuid.uuid4())
-              
-              return {
-                  'statusCode': 200,
-                  'headers': {
-                      'Access-Control-Allow-Origin': '*',
-                      'Access-Control-Allow-Headers': 'Content-Type',
-                      'Access-Control-Allow-Methods': 'POST,OPTIONS'
-                  },
-                  'body': json.dumps({
-                      'message': f'Share endpoint ready for file {file_id}',
-                      'shareLink': f'https://placeholder.com/share/{share_token}'
-                  })
-              }
+        Code:
+        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/share_file/${Environment}/share_file.zip'
       Environment:
         Variables:
+          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
-          TABLE_NAME: !Sub 'files-${Environment}'
       Timeout: 30
       MemorySize: 256
 

@@ -59,7 +59,37 @@ Resources:
         AttributeName: expiresAt
         Enabled: true
 
+# Lambda Code Storage Bucket
+  LambdaCodeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'lambda-code-${Environment}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
 Outputs:
+  LambdaCodeBucketName:
+    Description: S3 bucket for Lambda deployment packages
+    Value: !Ref LambdaCodeBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaCodeBucket'
+
+  LambdaCodeBucketArn:
+    Description: ARN of Lambda code bucket
+    Value: !GetAtt LambdaCodeBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaCodeBucketArn'
   FileStorageBucketName:
     Description: Name of the S3 bucket for file storage
     Value: !Ref FileStorageBucket
