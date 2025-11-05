@@ -415,6 +415,39 @@ Resources:
       DeploymentId: !Ref ApiGatewayDeployment
       Description: !Sub '${Environment} stage'
 
+  # ============================================
+  # API USAGE PLAN AND API KEY (THROTTLING/RATE LIMITING)
+  # ============================================
+
+  ApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub '${AWS::StackName}-usage-plan'
+      Description: Rate limiting for file storage API
+      Throttle:
+        RateLimit: 100
+        BurstLimit: 200
+      Quota:
+        Limit: 50000
+        Period: DAY
+      ApiStages:
+        - ApiId: !Ref MyApiGateway
+          Stage: !Ref ApiGatewayStage
+
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub '${AWS::StackName}-api-key'
+      Description: API key for file storage application
+      Enabled: true
+
+  UsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlan
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL
@@ -433,3 +466,9 @@ Outputs:
     Value: !GetAtt LambdaExecutionRole.Arn
     Export:
       Name: !Sub '${AWS::StackName}-lambda-role'
+
+  ApiKeyId:
+    Description: API Gateway API Key ID
+    Value: !Ref ApiKey
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiKeyId'
