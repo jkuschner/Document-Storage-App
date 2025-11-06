@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { resetPassword, confirmResetPassword } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
+import { passwordPolicy } from "../../aws-exports";
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
@@ -46,33 +47,51 @@ export default function ResetPassword() {
       {stage === "request" ? (
         <form onSubmit={requestReset}>
           <h2>Reset Password</h2>
+
           <label>Email</label>
+
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+
+          <p style={{ color: "gray" }}>
+                    Password must be at least {passwordPolicy.minLength} characters
+                    {passwordPolicy.requireUppercase ? ", include uppercase letters" : ""}
+                    {passwordPolicy.requireNumbers ? ", include numbers" : ""}
+                    {passwordPolicy.requireSymbols ? ", include symbols" : ""}.
+                    </p>
+
           <button type="submit">Send Code</button>
+
         </form>
       ) : (
         <form onSubmit={confirmReset}>
+          
           <h2>Enter Code</h2>
+
           <label>Confirmation Code</label>
+
           <input
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             required
           />
+
           <label>New Password</label>
+
           <input
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
           />
+
           <button type="submit">Reset Password</button>
+
         </form>
       )}
 

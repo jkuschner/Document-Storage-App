@@ -14,11 +14,11 @@ const awsExports: ResourcesConfig = {
 };
 
 export const passwordPolicy = {
-  minLength: 6,
-  requireUppercase: false,
+  minLength: 8,
+  requireUppercase: true,
   requireLowercase: true,
-  requireNumbers: false,
-  requireSymbols: false,
+  requireNumbers: true,
+  requireSymbols: true,
 };
 
 

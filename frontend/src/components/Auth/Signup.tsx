@@ -43,27 +43,35 @@ export default function Signup() {
     <div>
       {stage === "signup" ? (
         <form onSubmit={handleSignup}>
+
           <h2>Sign Up</h2>
+
           <label>Email</label>
+
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+
           <label>Password</label>
+
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
           <p style={{ color: "gray" }}>
-          Password must be at least {passwordPolicy.minLength} characters
+          Password must be at least {passwordPolicy.minLength} characters 
           {passwordPolicy.requireUppercase ? ", include uppercase letters" : ""}
           {passwordPolicy.requireNumbers ? ", include numbers" : ""}
           {passwordPolicy.requireSymbols ? ", include symbols" : ""}.
           </p>
+
+          <button type="submit">Create Account</button>
         </form>
       ) : (
         <form onSubmit={handleConfirm}>
