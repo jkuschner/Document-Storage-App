@@ -2,7 +2,6 @@ import { useState } from "react";
 import { signIn } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 
-
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +28,14 @@ export default function Login() {
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button type="submit">Login</button>
       </form>
+
       {error && <p style={{ color: "red" }}>{error}</p>}
+
+      {/* Navigation buttons */}
+      <div style={{ marginTop: "10px" }}>
+        <button onClick={() => navigate("/signup")}>Create an Account</button>
+        <button onClick={() => navigate("/resetpassword")}>Forgot Password?</button>
+      </div>
     </div>
   );
 }
