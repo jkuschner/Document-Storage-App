@@ -20,6 +20,21 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            AllowedHeaders:
+              - '*'
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
 
   FilesTable:
     Type: AWS::DynamoDB::Table
@@ -78,6 +93,7 @@ Resources:
       Tags:
         - Key: Environment
           Value: !Ref Environment
+
 Outputs:
   LambdaCodeBucketName:
     Description: S3 bucket for Lambda deployment packages
@@ -90,6 +106,7 @@ Outputs:
     Value: !GetAtt LambdaCodeBucket.Arn
     Export:
       Name: !Sub '${AWS::StackName}-LambdaCodeBucketArn'
+  
   FileStorageBucketName:
     Description: Name of the S3 bucket for file storage
     Value: !Ref FileStorageBucket
