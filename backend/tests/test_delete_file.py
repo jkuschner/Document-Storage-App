@@ -13,11 +13,9 @@ TEST_CONTENT = 'Temporary content'
 TEST_USER_ID = 'test-user'
 TEST_TABLE_NAME = 'files-dev'
 
-os.environ["FILE_BUCKET_NAME"] = TEST_BUCKET_NAME
-os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
-
 MOCK_EVENT = {
-    'queryStringParameters': {'filename': TEST_FILENAME} 
+    "pathParameters": {"fileId": TEST_FILENAME},
+    "queryStringParameters": {"userId": TEST_USER_ID},
 }
 
 @mock_aws
@@ -25,6 +23,9 @@ def test_delete_file_success():
     """
     Tests successful deletion by confirming the file is gone from S3.
     """
+
+    os.environ["FILE_BUCKET_NAME"] = TEST_BUCKET_NAME
+    os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
 
     # Create bucket and place a file
     s3_client = boto3.client('s3', region_name=TEST_REGION)
@@ -69,10 +70,7 @@ def test_delete_file_success():
     import importlib
     importlib.reload(handler_module)
 
-    event = {
-        "pathParameters": {"fileId": TEST_FILENAME},
-        "queryStringParameters": {"userId": TEST_USER_ID},
-    }
+    event = MOCK_EVENT
 
     response = handler_module.lambda_handler(event, None)
 
