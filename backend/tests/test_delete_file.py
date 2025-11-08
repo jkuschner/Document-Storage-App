@@ -6,14 +6,17 @@ import boto3
 import time
 from moto import mock_aws
 
-from lambda_functions.delete_file.handler import lambda_handler
-
 TEST_BUCKET_NAME = 'test-dummy-bucket'
 TEST_REGION = 'us-west-2'
 TEST_FILENAME = 'file_to_delete.txt'
 TEST_CONTENT = 'Temporary content'
 TEST_USER_ID = 'test-user'
 TEST_TABLE_NAME = 'files-dev'
+
+os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
+
+from lambda_functions.delete_file.handler import lambda_handler
 
 MOCK_EVENT = {
     'queryStringParameters': {'filename': TEST_FILENAME} 
@@ -52,6 +55,7 @@ def test_delete_file_success():
     )
 
     table.meta.client.get_waiter("table_exists").wait(TableName=TEST_TABLE_NAME)
+    time.sleep(0.5)
 
     # Insert mock record
     table.put_item(
@@ -62,12 +66,8 @@ def test_delete_file_success():
         }
     )
 
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-    os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
-
-    import importlib
-    from lambda_functions.delete_file import handler
-    importlib.reload(handler)
+    #os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+    #os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
 
     event = {
         "pathParameters": {"fileId": TEST_FILENAME},
@@ -81,8 +81,15 @@ def test_delete_file_success():
     assert response['statusCode'] == 200
 
     # Check file is gone from S3
-    with pytest.raises(s3_client.exceptions.NoSuchKey):
+
+    #with pytest.raises(s3_client.exceptions.NoSuchKey):
+        #s3_client.get_object(Bucket=TEST_BUCKET_NAME, Key=TEST_FILENAME)
+    
+    from botocore.exceptions import ClientError
+
+    with pytest.raises(ClientError) as exc:
         s3_client.get_object(Bucket=TEST_BUCKET_NAME, Key=TEST_FILENAME)
+    assert exc.value.response['Error']['Code'] == 'NoSuchKey'
 
     result = table.get_item(Key={"userId": TEST_USER_ID, "fileId": TEST_FILENAME})
     assert "Item" not in result
@@ -94,8 +101,15 @@ def test_delete_nonexistent_file_success():
     """
     os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
     os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
-    dynamodb = boto3.client('dynamodb', region_name=TEST_REGION)
-    dynamodb.create_table(
+    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
+
+    s3_client.create_bucket(
+        Bucket=TEST_BUCKET_NAME,
+        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    )
+
+    table = dynamodb.create_table(
         TableName=TEST_TABLE_NAME,
         KeySchema=[
             {'AttributeName': 'userId', 'KeyType': 'HASH'},
@@ -108,6 +122,9 @@ def test_delete_nonexistent_file_success():
         BillingMode='PAY_PER_REQUEST'
     )
 
+    table.meta.client.get_waiter("table_exists").wait(TableName=TEST_TABLE_NAME)
+    time.sleep(0.5)
+
     # This fileId doesn't exist in the table
     missing_event = {
         'pathParameters': {'fileId': 'nonexistent-file'},
@@ -117,3 +134,5 @@ def test_delete_nonexistent_file_success():
 
     # Expect 404 (File not found)
     assert response['statusCode'] == 404
+    body = json.loads(response['body'])
+    assert body['error'] == 'File not found'
