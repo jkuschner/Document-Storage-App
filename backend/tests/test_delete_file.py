@@ -4,8 +4,8 @@ import os
 import pytest
 import boto3
 import time
-#import importlib
 from moto import mock_aws
+from lambda_functions.delete_file.handler import lambda_handler
 
 TEST_BUCKET_NAME = 'test-dummy-bucket'
 TEST_REGION = 'us-west-2'
@@ -13,6 +13,9 @@ TEST_FILENAME = 'file_to_delete.txt'
 TEST_CONTENT = 'Temporary content'
 TEST_USER_ID = 'test-user'
 TEST_TABLE_NAME = 'files-dev'
+
+os.environ["FILE_BUCKET_NAME"] = TEST_BUCKET_NAME
+os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
 
 MOCK_EVENT = {
     'queryStringParameters': {'filename': TEST_FILENAME} 
@@ -52,7 +55,7 @@ def test_delete_file_success():
     )
 
     table.meta.client.get_waiter("table_exists").wait(TableName=TEST_TABLE_NAME)
-    time.sleep(0.5)
+    time.sleep(0.3)
 
     # Insert mock record
     table.put_item(
@@ -63,20 +66,12 @@ def test_delete_file_success():
         }
     )
 
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-    os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
-
-    # call the handler
-    import importlib
-    import lambda_functions.delete_file.handler as handler_module
-    importlib.reload(handler_module)
-
     event = {
         "pathParameters": {"fileId": TEST_FILENAME},
         "queryStringParameters": {"userId": TEST_USER_ID},
     }
 
-    response = handler_module.lambda_handler(event, None)
+    response = lambda_handler(event, None)
 
     # Check statusCode
     assert response['statusCode'] == 200
