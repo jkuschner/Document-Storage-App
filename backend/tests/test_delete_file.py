@@ -70,9 +70,9 @@ def test_delete_file_success():
     import importlib
     importlib.reload(handler_module)
 
-    event = MOCK_EVENT
+    handler_module.boto3 = boto3
 
-    response = handler_module.lambda_handler(event, None)
+    response = handler_module.lambda_handler(MOCK_EVENT, None)
 
     # Check statusCode
     assert response['statusCode'] == 200
