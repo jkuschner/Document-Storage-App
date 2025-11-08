@@ -55,7 +55,7 @@ def test_delete_file_success():
     )
 
     table.meta.client.get_waiter("table_exists").wait(TableName=TEST_TABLE_NAME)
-    time.sleep(0.3)
+    time.sleep(0.2)
 
     # Insert mock record
     table.put_item(
