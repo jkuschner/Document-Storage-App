@@ -5,7 +5,6 @@ import pytest
 import boto3
 import time
 from moto import mock_aws
-from lambda_functions.delete_file.handler import lambda_handler
 
 TEST_BUCKET_NAME = 'test-dummy-bucket'
 TEST_REGION = 'us-west-2'
@@ -66,12 +65,15 @@ def test_delete_file_success():
         }
     )
 
+    import lambda_functions.delete_file.handler as handler_module
+    importlib.reload(handler_module)
+
     event = {
         "pathParameters": {"fileId": TEST_FILENAME},
         "queryStringParameters": {"userId": TEST_USER_ID},
     }
 
-    response = lambda_handler(event, None)
+    response = handler_module.lambda_handler(event, None)
 
     # Check statusCode
     assert response['statusCode'] == 200
