@@ -76,9 +76,9 @@ def test_delete_file_success():
     }
 
     # call the handler
+    import lambda_functions.delete_file.handler as handler_module
     importlib.reload(handler_module)
-    from lambda_functions.delete_file.handler import lambda_handler
-    response = lambda_handler(event, None)
+    response = handler_module.lambda_handler(event, None)
 
     # Check statusCode
     assert response['statusCode'] == 200
