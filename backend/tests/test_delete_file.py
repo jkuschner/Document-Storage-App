@@ -3,6 +3,7 @@ import json
 import os
 import pytest
 import boto3
+import time
 from moto import mock_aws
 
 from lambda_functions.delete_file.handler import lambda_handler
@@ -49,6 +50,8 @@ def test_delete_file_success():
         ],
         BillingMode="PAY_PER_REQUEST",
     )
+
+    table.meta.client.get_waiter("table_exists").wait(TableName=TEST_TABLE_NAME)
 
     # Insert mock record
     table.put_item(
