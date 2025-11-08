@@ -65,6 +65,10 @@ def test_delete_file_success():
     os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
     os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
 
+    import importlib
+    from lambda_functions.delete_file import handler
+    importlib.reload(handler)
+
     event = {
         "pathParameters": {"fileId": TEST_FILENAME},
         "queryStringParameters": {"userId": TEST_USER_ID},
