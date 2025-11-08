@@ -4,7 +4,6 @@ import Signup from "./components/Auth/Signup";
 import ResetPassword from "./components/Auth/ResetPassword";
 import FileList from "./components/FileList";
 
-
 function App() {
   return (
     <Router>
@@ -15,7 +14,7 @@ function App() {
         {/* Auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/reset" element={<ResetPassword />} />
+        <Route path="/resetpassword" element={<ResetPassword />} /> {/* <-- changed from /reset */}
 
         {/* Main app routes */}
         <Route path="/files" element={<FileList />} />

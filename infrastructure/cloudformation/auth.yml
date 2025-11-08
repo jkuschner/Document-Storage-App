@@ -24,11 +24,11 @@ Resources:
           Mutable: false
       Policies:
         PasswordPolicy:
-          MinimumLength: 8
-          RequireUppercase: true
+          MinimumLength: 6
+          RequireUppercase: false
           RequireLowercase: true
-          RequireNumbers: true
-          RequireSymbols: true
+          RequireNumbers: false
+          RequireSymbols: false
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -37,7 +37,7 @@ Resources:
       UserPoolId: !Ref UserPool
       GenerateSecret: false
       ExplicitAuthFlows:
-        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
 
   IdentityPool:

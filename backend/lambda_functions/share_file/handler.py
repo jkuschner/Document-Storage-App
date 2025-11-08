@@ -1,49 +1,90 @@
-# lambda_functions/share_file/handler.py
 import json
 import os
 import boto3
+import uuid
+from datetime import datetime, timedelta
 
-# Initialize S3 client and get bucket name from environment
-S3_CLIENT = boto3.client('s3')
-BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'test-dummy-bucket')
+dynamodb = boto3.resource('dynamodb')
+
+FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+SHARED_LINKS_TABLE_NAME = os.environ.get('SHARED_LINKS_TABLE_NAME', 'SharedLinksTable-dev')
+
+files_table = dynamodb.Table(FILES_TABLE_NAME)
+shared_links_table = dynamodb.Table(SHARED_LINKS_TABLE_NAME)
+
 
 def lambda_handler(event, context):
     """
-    Generates a presigned URL for secure, temporary access to a file.
-    Expects 'filename' in the query string parameters.
+    Creates a shareable link for a file.
     """
     try:
-        file_name = event.get('queryStringParameters', {}).get('filename')
+        # Get fileId from path parameters
+        path_params = event.get('pathParameters', {})
+        file_id = path_params.get('fileId')
         
-        if not file_name:
+        # Get userId from query params (TODO: from Cognito)
+        query_params = event.get('queryStringParameters') or {}
+        user_id = query_params.get('userId', 'test-user')
+        
+        # Parse request body for expiration
+        body = json.loads(event.get('body', '{}'))
+        expiration_hours = body.get('expirationHours', 24)
+        
+        if not file_id:
             return {
                 'statusCode': 400,
-                'body': json.dumps({'message': 'Missing filename query parameter.'})
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'fileId is required'})
             }
         
-        # generate presigned URL
-        # ClientMethod='get_object' specifies URL is for downloading/viewing
-        # ExpiresIn=3600 sets link expiration time to 1 hour(3600 sec)
-        url = S3_CLIENT.generate_presigned_url(
-            ClientMethod='get_object',
-            Params={'Bucket': BUCKET_NAME, 'Key': file_name},
-            ExpiresIn=3600
+        # Verify file exists
+        response = files_table.get_item(
+            Key={'userId': user_id, 'fileId': file_id}
         )
-
+        
+        if 'Item' not in response:
+            return {
+                'statusCode': 404,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'File not found'})
+            }
+        
+        # Generate share token
+        share_token = str(uuid.uuid4())
+        expiration_time = datetime.utcnow() + timedelta(hours=expiration_hours)
+        
+        # Store share link in DynamoDB
+        shared_links_table.put_item(
+            Item={
+                'shareToken': share_token,
+                'fileId': file_id,
+                'userId': user_id,
+                'createdAt': datetime.utcnow().isoformat(),
+                'expiresAt': int(expiration_time.timestamp())  # TTL in epoch seconds
+            }
+        )
+        
+        # Generate share URL (TODO: use actual domain)
+        share_url = f"https://your-app-domain.com/shared/{share_token}"
+        
         return {
             'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
             'body': json.dumps({
-                'message': f'Presigned URL generated for {file_name}. Expires in 1 hour.',
-                'url': url
+                'shareUrl': share_url,
+                'shareToken': share_token,
+                'expiresAt': expiration_time.isoformat(),
+                'message': 'Share link created successfully'
             })
         }
-    
+        
     except Exception as e:
-        print(f"Error generating presigned URL: {e}")
+        print(f"Error creating share link: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps({
-                'message': 'Internal server error while sharing file.',
-                'error': str(e)
-            })
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': str(e)})
         }

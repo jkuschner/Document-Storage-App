@@ -1,44 +1,77 @@
-# lambda functions/delete_file/handler.py
 import json
 import os
 import boto3
 
-S3_CLIENT = boto3.client('s3')
-BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'test-dummy-bucket')
+s3_client = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb')
+
+FILE_BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'file-storage-dev')
+FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+files_table = dynamodb.Table(FILES_TABLE_NAME)
+
 
 def lambda_handler(event, context):
     """
-    Deletes a specified file from the S3 bucket.
-    Expects 'filename' in the query string parameters.
+    Deletes a file from S3 and removes metadata from DynamoDB.
     """
     try:
-        file_name = event.get('queryStringParameters', {}).get('filename')
-        if not file_name:
+        # Get fileId from path parameters
+        path_params = event.get('pathParameters', {})
+        file_id = path_params.get('fileId')
+        
+        # Get userId from query params (TODO: from Cognito)
+        query_params = event.get('queryStringParameters') or {}
+        user_id = query_params.get('userId', 'test-user')
+        
+        if not file_id:
             return {
                 'statusCode': 400,
-                'body': json.dumps({
-                    'message': 'Missing filename query parameter.'
-                })
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'fileId is required'})
             }
-
-        S3_CLIENT.delete_object(
-            Bucket=BUCKET_NAME,
-            Key=file_name
+        
+        # Get file metadata from DynamoDB
+        response = files_table.get_item(
+            Key={'userId': user_id, 'fileId': file_id}
         )
-
+        
+        if 'Item' not in response:
+            return {
+                'statusCode': 404,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'File not found'})
+            }
+        
+        file_item = response['Item']
+        s3_key = file_item['s3Key']
+        
+        # Delete from S3
+        s3_client.delete_object(
+            Bucket=FILE_BUCKET_NAME,
+            Key=s3_key
+        )
+        
+        # Delete from DynamoDB
+        files_table.delete_item(
+            Key={'userId': user_id, 'fileId': file_id}
+        )
+        
         return {
-            'statusCode': 204,
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
             'body': json.dumps({
-                'message': f'File {file_name} deleted successfully.'
+                'message': 'File deleted successfully',
+                'fileId': file_id
             })
         }
-
+        
     except Exception as e:
-        print(f"Error deleting file: {e}")
+        print(f"Error deleting file: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps({
-                'message': 'Internal server error while deleting file.',
-                'error': str(e)
-            })
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': str(e)})
         }

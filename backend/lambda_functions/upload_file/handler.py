@@ -1,59 +1,80 @@
-# lambda_functions/upload_file/handler.py
 import json
 import os
-import base64
 import boto3
+import uuid
+from datetime import datetime
 
-S3_CLIENT = boto3.client('s3')
-BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'test-dummy-bucket')
+s3_client = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb')
+
+FILE_BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'file-storage-dev')
+FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+files_table = dynamodb.Table(FILES_TABLE_NAME)
+
 
 def lambda_handler(event, context):
     """
-    Handles file uploads by decoding the Base64 body and saving it to S3.
-    Expects 'filename' in the query string parameters.
+    Generates a presigned URL for file upload and creates DynamoDB entry.
     """
     try:
-        # Get filename from query string parameters
-        file_name = event.get('queryStringParameters', {}).get('filename')
+        # Parse request body
+        body = json.loads(event.get('body', '{}'))
+        file_name = body.get('fileName')
+        user_id = body.get('userId', 'test-user')  # TODO: Get from Cognito
+        content_type = body.get('contentType', 'application/octet-stream')
+        
         if not file_name:
             return {
                 'statusCode': 400,
-                'body': json.dumps({
-                    'message': 'Missing filename query parameter.'
-                    })
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'fileName is required'})
             }
-
-        # get base64 encoded body
-        encoded_body = event.get('body')
-        if not encoded_body:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({'message': 'Missing request body.'})
-            }
-
-        # decode the body
-        file_content = base64.b64decode(encoded_body)
-
-        # upload decoded content to S3
-        S3_CLIENT.put_object(
-            Bucket=BUCKET_NAME,
-            Key=file_name,
-            Body=file_content
+        
+        # Generate unique file ID
+        file_id = str(uuid.uuid4())
+        s3_key = f"{user_id}/{file_id}/{file_name}"
+        
+        # Generate presigned URL for upload
+        presigned_url = s3_client.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': FILE_BUCKET_NAME,
+                'Key': s3_key,
+                'ContentType': content_type
+            },
+            ExpiresIn=3600  # 1 hour
         )
-
+        
+        # Create DynamoDB entry
+        files_table.put_item(
+            Item={
+                'userId': user_id,
+                'fileId': file_id,
+                'fileName': file_name,
+                's3Key': s3_key,
+                'contentType': content_type,
+                'uploadDate': datetime.utcnow().isoformat(),
+                'status': 'pending'
+            }
+        )
+        
         return {
-            'statusCode': 201,
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
             'body': json.dumps({
-                'message': f'File {file_name} uploaded successfully'
+                'uploadUrl': presigned_url,
+                'fileId': file_id,
+                'message': 'Upload URL generated successfully'
             })
         }
-    
+        
     except Exception as e:
-        print(f"Error uploading file: {e}")
+        print(f"Error generating upload URL: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps({
-                'message': 'Internal server error while uploading file.',
-                'error': str(e)
-            })
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': str(e)})
         }

@@ -1,77 +1,77 @@
-# lambda_functions/download_file/handler.py
 import json
 import os
 import boto3
-import base64
-from botocore.exceptions import ClientError
 
-S3_CLIENT = boto3.client('s3')
-BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'test-dummy-bucket')
+s3_client = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb')
+
+FILE_BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'file-storage-dev')
+FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+files_table = dynamodb.Table(FILES_TABLE_NAME)
+
 
 def lambda_handler(event, context):
     """
-    Downloads a specific file from S3 bucket.
-    expects 'filename' in the query string parameters
+    Generates a presigned URL for file download.
     """
     try:
-        file_name = event.get('queryStringParameters', {}).get('filename')
+        # Get fileId from path parameters
+        path_params = event.get('pathParameters', {})
+        file_id = path_params.get('fileId')
         
-        if not file_name:
+        # Get userId from query params (TODO: from Cognito)
+        query_params = event.get('queryStringParameters') or {}
+        user_id = query_params.get('userId', 'test-user')
+        
+        if not file_id:
             return {
                 'statusCode': 400,
-                'body': json.dumps({'message': 'Missing filename query parameter.'})
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'fileId is required'})
             }
-
-        # Get the object from S3
-        response = S3_CLIENT.get_object(
-            Bucket=BUCKET_NAME,
-            Key=file_name
+        
+        # Get file metadata from DynamoDB
+        response = files_table.get_item(
+            Key={'userId': user_id, 'fileId': file_id}
         )
-
-        file_content = response['Body'].read()
-
-        # Encode content for API Gateway Binary Handling
-        # content must be base64 encoded and flag set to true for API Gateway
-        # to correctly handle binary data (images, .zip, PDFs, etc...)
-        encoded_content = base64.b64encode(file_content).decode('utf-8')
-
+        
+        if 'Item' not in response:
+            return {
+                'statusCode': 404,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'File not found'})
+            }
+        
+        file_item = response['Item']
+        s3_key = file_item['s3Key']
+        
+        # Generate presigned URL for download
+        download_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': FILE_BUCKET_NAME,
+                'Key': s3_key
+            },
+            ExpiresIn=3600  # 1 hour
+        )
+        
         return {
             'statusCode': 200,
             'headers': {
-                # This header is crucial for the browser to download the file
-                'Content-Disposition': f'attachment; filename="{file_name}"', 
-                'Content-Type': response.get('ContentType', 
-                                             'application/octet-stream')
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
             },
-            'body': encoded_content,
-            # This flag tells API Gateway to decode the base64 body before sending
-            'isBase64Encoded': True 
+            'body': json.dumps({
+                'downloadUrl': download_url,
+                'fileName': file_item['fileName'],
+                'fileId': file_id
+            })
         }
-
-    except ClientError as e:
-        # Handle the common case where the file is not found (404)
-        if e.response['Error']['Code'] == 'NoSuchKey':
-            return {
-                'statusCode': 404,
-                'body': json.dumps({'message': f'File {file_name} not found.'})
-            }
         
-        # Handle other S3-related errors
-        print(f"S3 Client Error: {e}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'message': 'Internal server error on S3 operation.',
-                'error': str(e)
-            })
-        }
-            
     except Exception as e:
-        print(f"Unexpected Error: {e}")
+        print(f"Error generating download URL: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps({
-                'message': 'Unexpected internal server error.',
-                'error': str(e)
-            })
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': str(e)})
         }
