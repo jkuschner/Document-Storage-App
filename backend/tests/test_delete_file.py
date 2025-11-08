@@ -66,6 +66,7 @@ def test_delete_file_success():
     )
 
     import lambda_functions.delete_file.handler as handler_module
+    import importlib
     importlib.reload(handler_module)
 
     event = {
