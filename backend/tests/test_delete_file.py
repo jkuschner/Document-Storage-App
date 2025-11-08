@@ -4,7 +4,7 @@ import os
 import pytest
 import boto3
 import time
-import importlib
+#import importlib
 from moto import mock_aws
 
 TEST_BUCKET_NAME = 'test-dummy-bucket'
@@ -13,11 +13,6 @@ TEST_FILENAME = 'file_to_delete.txt'
 TEST_CONTENT = 'Temporary content'
 TEST_USER_ID = 'test-user'
 TEST_TABLE_NAME = 'files-dev'
-
-os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
-
-from lambda_functions.delete_file.handler import lambda_handler
 
 MOCK_EVENT = {
     'queryStringParameters': {'filename': TEST_FILENAME} 
@@ -32,6 +27,7 @@ def test_delete_file_success():
     # Create bucket and place a file
     s3_client = boto3.client('s3', region_name=TEST_REGION)
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
+
     s3_client.create_bucket(
         Bucket=TEST_BUCKET_NAME,
         CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
@@ -67,26 +63,25 @@ def test_delete_file_success():
         }
     )
 
-    #os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-    #os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+    os.environ["FILES_TABLE_NAME"] = TEST_TABLE_NAME
+
+    # call the handler
+    import importlib
+    import lambda_functions.delete_file.handler as handler_module
+    importlib.reload(handler_module)
 
     event = {
         "pathParameters": {"fileId": TEST_FILENAME},
         "queryStringParameters": {"userId": TEST_USER_ID},
     }
 
-    # call the handler
-    import lambda_functions.delete_file.handler as handler_module
-    importlib.reload(handler_module)
     response = handler_module.lambda_handler(event, None)
 
     # Check statusCode
     assert response['statusCode'] == 200
 
     # Check file is gone from S3
-
-    #with pytest.raises(s3_client.exceptions.NoSuchKey):
-        #s3_client.get_object(Bucket=TEST_BUCKET_NAME, Key=TEST_FILENAME)
     
     from botocore.exceptions import ClientError
 
