@@ -4,6 +4,7 @@ import os
 import pytest
 import boto3
 import time
+import importlib
 from moto import mock_aws
 
 TEST_BUCKET_NAME = 'test-dummy-bucket'
