@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 #shared_links_table = dynamodb.Table(SHARED_LINKS_TABLE_NAME)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context,dynamodb_resource = None):
     """
     Creates a shareable link for a file.
     """

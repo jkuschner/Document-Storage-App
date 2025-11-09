@@ -67,7 +67,7 @@ def test_share_file_url_is_generated():
     
     # Call the handler
     import importlib
-    import lambda_functions.list_files.handler as handler_module
+    import lambda_functions.share_files.handler as handler_module
     importlib.reload(handler_module)
     response = handler_module.lambda_handler(MOCK_EVENT, None,dynamodb_resource=dynamodb)
 
@@ -124,7 +124,7 @@ def test_share_file_missing_filename():
     missing_event = {}
 
     import importlib
-    import lambda_functions.list_files.handler as handler_module
+    import lambda_functions.share_files.handler as handler_module
     importlib.reload(handler_module)
     response = handler_module.lambda_handler(missing_event, None,dynamodb_resource=dynamodb)
 
