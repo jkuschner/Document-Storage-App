@@ -18,7 +18,7 @@ def lambda_handler(event, context, dynamodb_resource = None):
         # Extract userId from request
         # TODO: In production, get this from Cognito authorizer claims
         # For now, check query parameters or use a default
-        dynamodb = boto3.resource('dynamodb')
+        dynamodb = dynamodb_resource or boto3.resource('dynamodb')
         FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
         files_table = dynamodb.Table(FILES_TABLE_NAME)
 

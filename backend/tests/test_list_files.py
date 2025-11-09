@@ -3,12 +3,11 @@ import json
 import os
 import pytest
 import boto3
-#from moto import mock_aws
-from moto.dynamodb import mock_dynamodb
+from moto import mock_aws
 #import importlib
 
 # Import the handler function
-#from lambda_functions.list_files.handler import lambda_handler as handler_module
+from lambda_functions.list_files.handler import lambda_handler
 
 # name must match handler's default or environment variable
 #TEST_BUCKET_NAME = 'test-dummy-bucket'
@@ -16,7 +15,7 @@ TEST_REGION = 'us-west-2'
 TEST_USER_ID = 'test-user'
 TEST_TABLE_NAME = 'files-dev'
 
-@mock_dynamodb
+@mock_aws
 def test_list_files_with_content():
     """
     tests the handler when the S3 bucket contains files
@@ -27,7 +26,6 @@ def test_list_files_with_content():
 
     # Create the mock bucket
     #s3_client = boto3.client('s3', region_name=TEST_REGION)
-    import boto3
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
 
     #s3_client.create_bucket(
@@ -78,7 +76,7 @@ def test_list_files_with_content():
     importlib.reload(handler_module)
 
     # Call the handler
-    response = handler_module.lambda_handler({"queryStringParameters": {"userId": TEST_USER_ID}}, None,dynamodb_resource = dynamodb)
+    response = handler_module.lambda_handler({"queryStringParameters": {"userId": TEST_USER_ID}}, None,dynamodb_resource=dynamodb)
 
     # Check statusCode
     assert response['statusCode'] == 200
@@ -97,7 +95,7 @@ def test_list_files_with_content():
     assert sorted(file_ids) == ["file_a.txt", "file_b.pdf"]
 
 
-@mock_dynamodb
+@mock_aws
 def test_list_files_empty_bucket():
     """
     Tests the handler when the S3 bucket is empty.
@@ -107,7 +105,6 @@ def test_list_files_empty_bucket():
 
     # Create mock bucket, but add no files
     #s3_client = boto3.client('s3', region_name=TEST_REGION)
-    import boto3
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
 
     #s3_client.create_bucket(
@@ -137,7 +134,7 @@ def test_list_files_empty_bucket():
     import lambda_functions.list_files.handler as handler_module
     importlib.reload(handler_module)
 
-    response = handler_module.lambda_handler({'queryStringParameters': {'userId': TEST_USER_ID}}, None, dynamodb_resource = dynamodb)
+    response = handler_module.lambda_handler({'queryStringParameters': {'userId': TEST_USER_ID}}, None, dynamodb_resource=dynamodb)
 
     # 3. ASSERT: Check the response
     assert response['statusCode'] == 200
