@@ -66,7 +66,10 @@ def test_share_file_url_is_generated():
     files_table.put_item(Item={'userId': TEST_USER_ID, 'fileId': TEST_FILE_ID, 'filename': TEST_FILENAME})
     
     # Call the handler
-    response = lambda_handler(MOCK_EVENT, None)
+    import importlib
+    import lambda_functions.list_files.handler as handler_module
+    importlib.reload(handler_module)
+    response = handler_module.lambda_handler(MOCK_EVENT, None,dynamodb_resource=dynamodb)
 
     # Check the response structure and URL content
     assert response['statusCode'] == 200
@@ -119,7 +122,11 @@ def test_share_file_missing_filename():
 
     # Call the handler with an empty event
     missing_event = {}
-    response = lambda_handler(missing_event, None)
+
+    import importlib
+    import lambda_functions.list_files.handler as handler_module
+    importlib.reload(handler_module)
+    response = handler_module.lambda_handler(missing_event, None,dynamodb_resource=dynamodb)
 
     # Check for 400 Bad Request and correct message
     assert response['statusCode'] == 400

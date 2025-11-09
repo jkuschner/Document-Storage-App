@@ -4,13 +4,13 @@ import boto3
 import uuid
 from datetime import datetime, timedelta
 
-dynamodb = boto3.resource('dynamodb')
+#dynamodb = boto3.resource('dynamodb')
 
-FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
-SHARED_LINKS_TABLE_NAME = os.environ.get('SHARED_LINKS_TABLE_NAME', 'SharedLinksTable-dev')
+#FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+#SHARED_LINKS_TABLE_NAME = os.environ.get('SHARED_LINKS_TABLE_NAME', 'SharedLinksTable-dev')
 
-files_table = dynamodb.Table(FILES_TABLE_NAME)
-shared_links_table = dynamodb.Table(SHARED_LINKS_TABLE_NAME)
+#files_table = dynamodb.Table(FILES_TABLE_NAME)
+#shared_links_table = dynamodb.Table(SHARED_LINKS_TABLE_NAME)
 
 
 def lambda_handler(event, context):
@@ -18,6 +18,12 @@ def lambda_handler(event, context):
     Creates a shareable link for a file.
     """
     try:
+        dynamodb = dynamodb_resource or boto3.resource('dynamodb')
+        FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+        SHARED_LINKS_TABLE_NAME = os.environ.get('SHARED_LINKS_TABLE_NAME', 'SharedLinksTable-dev')
+        files_table = dynamodb.Table(FILES_TABLE_NAME)
+        shared_links_table = dynamodb.Table(SHARED_LINKS_TABLE_NAME)
+
         # Get fileId from path parameters
         path_params = event.get('pathParameters', {})
         file_id = path_params.get('fileId')
