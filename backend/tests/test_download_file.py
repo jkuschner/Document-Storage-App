@@ -67,20 +67,26 @@ def test_download_file_success():
         }
     )
 
-    import lambda_functions.download_file.handler as handler_module
     import importlib
+    import lambda_functions.download_file.handler as handler_module
     importlib.reload(handler_module)
     # Call the handler
     response = handler_module.lambda_handler(MOCK_EVENT, None)
     
     # Check the response
     assert response['statusCode'] == 200
-    assert response['isBase64Encoded'] == True
-    assert response['headers']['Content-Type'] == 'text/plain'
+    body = json.loads(response["body"])
+    assert "downloadUrl" in body
+    assert body["fileId"] == TEST_FILENAME
+    assert body["fileName"] == TEST_FILENAME
+    assert body["downloadUrl"].startswith("https://")
+
+    #assert response['isBase64Encoded'] == True
+    #assert response['headers']['Content-Type'] == 'text/plain'
 
     # Verify the decoded body matches the original content
-    decoded_content = base64.b64decode(response['body']).decode('utf-8')
-    assert decoded_content == TEST_CONTENT.decode('utf-8')
+    #decoded_content = base64.b64decode(response['body']).decode('utf-8')
+    #assert decoded_content == TEST_CONTENT.decode('utf-8')
 
 @mock_aws
 def test_download_file_not_found():
@@ -129,7 +135,7 @@ def test_download_file_not_found():
         'queryStringParameters': {'userId': TEST_USER_ID}
     }
 
-    import lambda_functions.delete_file.handler as handler_module
+    import lambda_functions.download_file.handler as handler_module
     import importlib
     importlib.reload(handler_module)
 
