@@ -6,7 +6,7 @@ import boto3
 from moto import mock_aws
 
 # Import the handler function
-from lambda_functions.list_files.handler import lambda_handler
+#from lambda_functions.list_files.handler import lambda_handler
 
 # name must match handler's default or environment variable
 TEST_BUCKET_NAME = 'test-dummy-bucket'
@@ -20,17 +20,17 @@ def test_list_files_with_content():
     tests the handler when the S3 bucket contains files
     """
     # Set environment variables
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+    #os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
     os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
 
     # Create the mock bucket
-    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    #s3_client = boto3.client('s3', region_name=TEST_REGION)
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
 
-    s3_client.create_bucket(
-        Bucket=TEST_BUCKET_NAME,
-        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
-    )
+    #s3_client.create_bucket(
+        #Bucket=TEST_BUCKET_NAME,
+        #CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    #)
 
     table = dynamodb.create_table(
         TableName=TEST_TABLE_NAME,
@@ -63,12 +63,12 @@ def test_list_files_with_content():
     )
 
     # add files to mock bucket
-    s3_client.put_object(Bucket=TEST_BUCKET_NAME, 
-                         Key='user/file_a.txt', 
-                         Body='Hello, I am file a.')
-    s3_client.put_object(Bucket=TEST_BUCKET_NAME,
-                         Key='user/file_b.pdf',
-                         Body='This is file b.')
+    #s3_client.put_object(Bucket=TEST_BUCKET_NAME, 
+                         #Key='user/file_a.txt', 
+                         #Body='Hello, I am file a.')
+    #s3_client.put_object(Bucket=TEST_BUCKET_NAME,
+                         #Key='user/file_b.pdf',
+                         #Body='This is file b.')
     
     import importlib
     import lambda_functions.list_files.handler as handler_module
@@ -91,7 +91,7 @@ def test_list_files_with_content():
     assert 'count' in body_data
     assert body_data['count'] == 2
     file_ids = [item['fileId'] for item in body_data['files']]
-    assert sorted(file_ids) == ["file_a.txt", "file_b.pdf"]
+    assert sorted(file_ids) == ["file_a.txt", "file_b.txt"]
 
 
 @mock_aws
@@ -99,17 +99,17 @@ def test_list_files_empty_bucket():
     """
     Tests the handler when the S3 bucket is empty.
     """
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+    #os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
     os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
 
     # Create mock bucket, but add no files
-    s3_client = boto3.client('s3', region_name=TEST_REGION)
+    #s3_client = boto3.client('s3', region_name=TEST_REGION)
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
 
-    s3_client.create_bucket(
-        Bucket=TEST_BUCKET_NAME,
-        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
-    )
+    #s3_client.create_bucket(
+        #Bucket=TEST_BUCKET_NAME,
+        #CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+    #)
 
     table = dynamodb.create_table(
         TableName=TEST_TABLE_NAME,
