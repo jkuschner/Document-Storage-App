@@ -64,6 +64,7 @@ def test_download_file_success():
             "userId": TEST_USER_ID,
             "fileId": TEST_FILENAME,
             "s3Key": TEST_FILENAME,
+            "fileName": TEST_FILENAME
         }
     )
 
@@ -127,6 +128,7 @@ def test_download_file_not_found():
             "userId": TEST_USER_ID,
             "fileId": TEST_FILENAME,
             "s3Key": TEST_FILENAME,
+            "fileName": TEST_FILENAME
         }
     )
 
