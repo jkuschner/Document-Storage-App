@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'infrastructure/cloudformation/backend.yml'
+  workflow_dispatch:
 
 jobs:
   test:
