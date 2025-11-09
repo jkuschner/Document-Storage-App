@@ -148,4 +148,4 @@ def test_download_file_not_found():
     assert response['statusCode'] == 404
     body_data = json.loads(response['body'])
     assert 'error' in body_data
-    assert 'not found' in body_data['message']
+    assert 'not found' in body_data['error']
