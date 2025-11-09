@@ -2,18 +2,26 @@ import json
 import os
 import boto3
 
-s3_client = boto3.client('s3')
-dynamodb = boto3.resource('dynamodb')
+#s3_client = boto3.client('s3')
+#dynamodb = boto3.resource('dynamodb')
 
-FILE_BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'file-storage-dev')
-FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
-files_table = dynamodb.Table(FILES_TABLE_NAME)
+#FILE_BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'file-storage-dev')
+#FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+#files_table = dynamodb.Table(FILES_TABLE_NAME)
 
 
 def lambda_handler(event, context):
     """
     Generates a presigned URL for file download.
     """
+    FILE_BUCKET_NAME = os.environ.get("FILE_BUCKET_NAME", "file-storage-dev")
+    FILES_TABLE_NAME = os.environ.get("FILES_TABLE_NAME", "files-dev")
+    REGION = "us-west-2"
+
+    s3_client = boto3.client("s3", region_name=REGION)
+    dynamodb = boto3.resource("dynamodb", region_name=REGION)
+    files_table = dynamodb.Table(FILES_TABLE_NAME)
+
     try:
         # Get fileId from path parameters
         path_params = event.get('pathParameters', {})
