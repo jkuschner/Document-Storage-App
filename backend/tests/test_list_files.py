@@ -4,7 +4,7 @@ import os
 import pytest
 import boto3
 #from moto import mock_aws
-from moto import mock_dynamodb
+from moto import mock_dynamodb2
 import importlib
 
 # Import the handler function
@@ -16,7 +16,7 @@ TEST_REGION = 'us-west-2'
 TEST_USER_ID = 'test-user'
 TEST_TABLE_NAME = 'files-dev'
 
-@mock_dynamodb
+@mock_dynamodb2
 def test_list_files_with_content():
     """
     tests the handler when the S3 bucket contains files
@@ -94,7 +94,7 @@ def test_list_files_with_content():
     assert sorted(file_ids) == ["file_a.txt", "file_b.pdf"]
 
 
-@mock_dynamodb
+@mock_dynamodb2
 def test_list_files_empty_bucket():
     """
     Tests the handler when the S3 bucket is empty.
