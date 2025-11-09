@@ -19,6 +19,10 @@ def test_list_files_with_content():
     """
     tests the handler when the S3 bucket contains files
     """
+    # Set environment variables
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+    os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
+
     # Create the mock bucket
     s3_client = boto3.client('s3', region_name=TEST_REGION)
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
@@ -27,10 +31,6 @@ def test_list_files_with_content():
         Bucket=TEST_BUCKET_NAME,
         CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
     )
-
-    # Set environment variables
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-    os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
 
     table = dynamodb.create_table(
         TableName=TEST_TABLE_NAME,
@@ -49,7 +49,7 @@ def test_list_files_with_content():
     table.put_item(
         Item={
             "userId": TEST_USER_ID,
-            "fileId": 'user/file_a.txt',
+            "fileId": 'file_a.txt',
             "fileName": 'file_a.txt'
         }
     )
@@ -57,7 +57,7 @@ def test_list_files_with_content():
     table.put_item(
         Item={
             "userId": TEST_USER_ID,
-            "fileId": 'user/file_b.txt',
+            "fileId": 'file_b.txt',
             "fileName": 'file_b.txt'
         }
     )
@@ -75,7 +75,7 @@ def test_list_files_with_content():
     importlib.reload(handler_module)
 
     # Call the handler
-    response = handler_module.lambda_handler({}, None)
+    response = handler_module.lambda_handler({"queryStringParameters": {"userId": TEST_USER_ID}}, None)
 
     # Check statusCode
     assert response['statusCode'] == 200
@@ -90,6 +90,8 @@ def test_list_files_with_content():
     assert 'files' in body_data
     assert 'count' in body_data
     assert body_data['count'] == 2
+    file_ids = [item['fileId'] for item in body_data['files']]
+    assert sorted(file_ids) == ["file_a.txt", "file_b.pdf"]
 
 
 @mock_aws
@@ -97,6 +99,9 @@ def test_list_files_empty_bucket():
     """
     Tests the handler when the S3 bucket is empty.
     """
+    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
+    os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
+
     # Create mock bucket, but add no files
     s3_client = boto3.client('s3', region_name=TEST_REGION)
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
@@ -105,9 +110,6 @@ def test_list_files_empty_bucket():
         Bucket=TEST_BUCKET_NAME,
         CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
     )
-
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-    os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
 
     table = dynamodb.create_table(
         TableName=TEST_TABLE_NAME,
@@ -125,13 +127,17 @@ def test_list_files_empty_bucket():
 
     # 2. EXECUTE: Call the handler
     #response = lambda_handler({}, None)
-    response = lambda_handler({'queryStringParameters': {'userId': TEST_USER_ID}}, None)
+    import importlib
+    import lambda_functions.list_files.handler as handler_module
+    importlib.reload(handler_module)
+    response = handler_module.lambda_handler({'queryStringParameters': {'userId': TEST_USER_ID}}, None)
 
     # 3. ASSERT: Check the response
     assert response['statusCode'] == 200
 
     body_data = json.loads(response['body'])
-
+    assert 'files' in body_data
+    assert 'count' in body_data
     # Check that the file list is empty
     assert body_data['files'] == []
     #assert 'listed 0 files' in body_data['message']
