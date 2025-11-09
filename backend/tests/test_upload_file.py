@@ -57,7 +57,7 @@ def test_upload_file_success():
     import importlib
     import lambda_functions.upload_file.handler as handler_module
     importlib.reload(handler_module)
-    response = handler_module.lambda_handler(MOCK_EVENT, None)
+    response = handler_module.lambda_handler(MOCK_EVENT, None, dynamodb_resource=dynamodb)
 
     # check HTTP response
     assert response['statusCode'] == 200

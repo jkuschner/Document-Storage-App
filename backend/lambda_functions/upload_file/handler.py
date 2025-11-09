@@ -11,13 +11,13 @@ from datetime import datetime
 #files_table = dynamodb.Table(FILES_TABLE_NAME)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context, dynamodb_resource=None):
     """
     Generates a presigned URL for file upload and creates DynamoDB entry.
     """
     try:
         s3_client = boto3.client('s3')
-        dynamodb = boto3.resource('dynamodb')
+        dynamodb = dynamodb_resource or boto3.resource('dynamodb')
         FILE_BUCKET_NAME = os.environ.get('FILE_BUCKET_NAME', 'file-storage-dev')
         FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
         files_table = dynamodb.Table(FILES_TABLE_NAME)
