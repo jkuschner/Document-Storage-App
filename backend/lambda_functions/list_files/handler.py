@@ -4,15 +4,20 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 # Initialize DynamoDB resource
-dynamodb = boto3.resource('dynamodb')
-FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
-files_table = dynamodb.Table(FILES_TABLE_NAME)
+#dynamodb = boto3.resource('dynamodb')
+#FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+#files_table = dynamodb.Table(FILES_TABLE_NAME)
 
 
 def lambda_handler(event, context):
     """
     Lists all files for a user by querying DynamoDB.
     """
+
+    dynamodb = boto3.resource('dynamodb')
+    FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
+    files_table = dynamodb.Table(FILES_TABLE_NAME)
+
     try:
         # Extract userId from request
         # TODO: In production, get this from Cognito authorizer claims
