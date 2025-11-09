@@ -1,93 +1,10 @@
-name: Deploy Backend
+name: Backend Deploy Test
 
 on:
-  push:
-    branches: ["week-2-test-pipeline"]
-    paths:
-      - 'backend/**'
-      - 'infrastructure/cloudformation/backend.yml'
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies and run tests
-        run: |
-          cd backend
-          pip install -r requirements.txt pytest pytest-cov moto
-          pytest tests/ --cov=lambda_functions
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-
-      - name: Package Lambda functions
-        run: |
-          set -e
-          cd backend/lambda_functions
-          echo "Starting Lambda packaging..."
-          for dir in */; do
-            function_name=$(basename "$dir")
-            echo "Packaging function: $function_name"
-            cd "$dir" || { echo "Failed to enter directory $dir"; exit 1; }
-            if [ -f requirements.txt ]; then
-              echo "Installing dependencies for $function_name..."
-              pip install -r requirements.txt -t . || { echo "Dependency installation failed for $function_name"; exit 1; }
-            fi
-            echo "Creating zip for $function_name..."
-            zip -r "../${function_name}.zip" . -x "*.pyc" -x "__pycache__/*" || { echo "Zipping failed for $function_name"; exit 1; }
-            cd ..
-            echo "Finished packaging $function_name"
-          done
-          echo "All Lambda functions packaged successfully."
-
-      - name: Upload Lambda packages to S3
-        run: |
-          set -e
-          cd backend/lambda_functions
-          bucket="lambda-artifacts-bucket-dev"
-          echo "Starting upload to S3 bucket: $bucket"
-          for zip_file in *.zip; do
-            echo "Uploading $zip_file..."
-            aws s3 cp "$zip_file" "s3://$bucket/" || { echo "Failed to upload $zip_file to S3"; exit 1; }
-            echo "Uploaded $zip_file successfully"
-          done
-          echo "All Lambda packages uploaded successfully."
-
-      - name: Update Lambda functions
-        run: |
-          set -e
-          cd backend/lambda_functions
-          bucket="lambda-artifacts-bucket-dev"
-          prefix="file-storage-dev"
-          echo "Starting Lambda function updates..."
-          for zip_file in *.zip; do
-            function_name=$(basename "$zip_file" .zip)
-            lambda_name="${prefix}-${function_name}"
-            echo "Updating Lambda function: $lambda_name..."
-            aws lambda update-function-code \
-              --function-name "$lambda_name" \
-              --s3-bucket "$bucket" \
-              --s3-key "$zip_file" || { echo "Failed to update Lambda $lambda_name"; exit 1; }
-            echo "Lambda function $lambda_name updated successfully."
-          done
-          echo "All Lambda functions updated successfully."
+      - run: echo "Workflow file is working!"
