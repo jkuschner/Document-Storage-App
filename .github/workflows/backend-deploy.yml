@@ -1,7 +1,8 @@
 name: Backend Deploy Test
 
 on:
-  workflow_dispatch:
+  push:
+   branches: ['week-2-test-pipeline']
 
 jobs:
   test:
