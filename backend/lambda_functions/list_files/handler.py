@@ -9,7 +9,7 @@ from boto3.dynamodb.conditions import Key
 #files_table = dynamodb.Table(FILES_TABLE_NAME)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context, dynamodb_resource = None):
     """
     Lists all files for a user by querying DynamoDB.
     """
@@ -21,7 +21,7 @@ def lambda_handler(event, context):
         dynamodb = boto3.resource('dynamodb')
         FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
         files_table = dynamodb.Table(FILES_TABLE_NAME)
-        
+
         query_params = event.get('queryStringParameters') or {}
         user_id = query_params.get('userId', 'test-user')
         

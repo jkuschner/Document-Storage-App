@@ -77,7 +77,7 @@ def test_list_files_with_content():
     importlib.reload(handler_module)
 
     # Call the handler
-    response = handler_module.lambda_handler({"queryStringParameters": {"userId": TEST_USER_ID}}, None)
+    response = handler_module.lambda_handler({"queryStringParameters": {"userId": TEST_USER_ID}}, None,dynamodb_resource = dynamodb)
 
     # Check statusCode
     assert response['statusCode'] == 200
@@ -135,8 +135,8 @@ def test_list_files_empty_bucket():
     import importlib
     import lambda_functions.list_files.handler as handler_module
     importlib.reload(handler_module)
-    
-    response = handler_module.lambda_handler({'queryStringParameters': {'userId': TEST_USER_ID}}, None)
+
+    response = handler_module.lambda_handler({'queryStringParameters': {'userId': TEST_USER_ID}}, None, dynamodb_resource = dynamodb)
 
     # 3. ASSERT: Check the response
     assert response['statusCode'] == 200
