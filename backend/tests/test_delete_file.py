@@ -95,6 +95,7 @@ def test_delete_nonexistent_file_success():
     """
     os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
     os.environ['FILES_TABLE_NAME'] = TEST_TABLE_NAME
+
     s3_client = boto3.client('s3', region_name=TEST_REGION)
     dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
 
@@ -117,14 +118,19 @@ def test_delete_nonexistent_file_success():
     )
 
     table.meta.client.get_waiter("table_exists").wait(TableName=TEST_TABLE_NAME)
-    time.sleep(0.5)
+    time.sleep(0.3)
 
     # This fileId doesn't exist in the table
     missing_event = {
         'pathParameters': {'fileId': 'nonexistent-file'},
         'queryStringParameters': {'userId': TEST_USER_ID}
     }
-    response = lambda_handler(missing_event, None)
+
+    import lambda_functions.delete_file.handler as handler_module
+    import importlib
+    importlib.reload(handler_module)
+
+    response = handler_module.lambda_handler(missing_event, None)
 
     # Expect 404 (File not found)
     assert response['statusCode'] == 404
