@@ -2,7 +2,7 @@ import json
 import os
 import boto3
 
-def lambda_handler(event, context):
+def lambda_handler(event, context,dynamodb_resource = None):
     """
     Deletes a file from S3 and removes metadata from DynamoDB.
     """
