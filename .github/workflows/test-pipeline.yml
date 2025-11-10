@@ -74,6 +74,37 @@ jobs:
           name: backend-test-results
           path: backend/test-results/
 
+  integration-tests:
+    name: Integration Tests
+    needs: backend-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov boto3 moto
+
+      - name: Run integration tests
+        run: |
+          mkdir -p test-results
+          pytest tests/integration/test_file_operations.py --disable-warnings --maxfail=1 --junitxml=test-results/integration-results.xml
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: backend/test-results/
+
   security-scan:
     name: Security & Dependency Scan
     runs-on: ubuntu-latest
@@ -99,3 +130,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install safety
           safety check || true
+
+  deploy-backend:
+    needs: backend-tests
+    uses: ./.github/workflows/backend-deploy.yml
