@@ -95,9 +95,8 @@ jobs:
 
       - name: Run integration tests
         run: |
-        working-directory: backend
           mkdir -p test-results
-          pytest ../tests/integration/test_file_operations.py --disable-warnings --maxfail=1 --junitxml=test-results/integration-results.xml
+          PYTHONPATH=backend pytest tests/integration/test_file_operations.py --disable-warnings --maxfail=1 --junitxml=test-results/integration-results.xml
 
       - name: Upload integration test results
         if: always()

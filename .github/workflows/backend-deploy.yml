@@ -24,6 +24,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
+      - name: Debug AWS credentials
+        run: |
+          aws sts get-caller-identity
+
+
       - name: Package Lambda functions
         run: |
           set -e
