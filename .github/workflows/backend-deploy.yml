@@ -1,11 +1,60 @@
-#name: Backend Deploy Test
+name: Backend Deploy Test
 
-#on:
-  #push:
-   #branches: ['week-2-test-pipeline']
+on:
+  push:
+    branches: ["week-2-test-pipeline"]
+    paths:
+      - 'backend/**'
+      - 'infrastructure/cloudformation/backend.yml'
+  workflow_call:
 
-#jobs:
-  #test:
-    #runs-on: ubuntu-latest
-    #steps:
-      #- run: echo "Workflow file is working!"
+jobs:
+  deploy:
+    name: Deploy Lambda Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Package Lambda functions
+        run: |
+          set -e
+          cd backend/lambda_functions
+          for dir in */; do
+            function_name=$(basename "$dir")
+            cd "$dir"
+            if [ -f requirements.txt ]; then
+              pip install -r requirements.txt -t .
+            fi
+            zip -r "../${function_name}.zip" . -x "*.pyc" -x "__pycache__/*"
+            cd ..
+          done
+
+      - name: Upload Lambda packages to S3
+        run: |
+          set -e
+          cd backend/lambda_functions
+          for zip_file in *.zip; do
+            aws s3 cp "$zip_file" s3://lambda-artifacts-bucket-dev/
+          done
+
+      - name: Update Lambda functions
+        run: |
+          set -e
+          cd backend/lambda_functions
+          for zip_file in *.zip; do
+            function_name=$(basename "$zip_file" .zip)
+            echo "Updating Lambda: file-storage-dev-${function_name}"
+            aws lambda update-function-code \
+              --function-name "file-storage-dev-${function_name}" \
+              --s3-bucket lambda-artifacts-bucket-dev \
+              --s3-key "$zip_file"
+          done
