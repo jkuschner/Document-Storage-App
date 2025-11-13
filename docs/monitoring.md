@@ -43,23 +43,23 @@ Confirm via email link.
 ## CloudWatch Logs
 
 **Log Groups:**
-- `/aws/lambda/dev-backend-stack-upload-file`
-- `/aws/lambda/dev-backend-stack-list-files`
-- `/aws/lambda/dev-backend-stack-download-file`
-- `/aws/lambda/dev-backend-stack-delete-file`
-- `/aws/lambda/dev-backend-stack-share-file`
-- `/aws/lambda/dev-backend-stack-mcp-handler`
-- `/aws/lambda/dev-backend-stack-chat-handler`
+- `/aws/lambda/file-storage-dev-backend-upload-file`
+- `/aws/lambda/file-storage-dev-backend-list-files`
+- `/aws/lambda/file-storage-dev-backend-download-file`
+- `/aws/lambda/file-storage-dev-backend-delete-file`
+- `/aws/lambda/file-storage-dev-backend-share-file`
+- `/aws/lambda/file-storage-dev-backend-mcp-handler`
+- `/aws/lambda/file-storage-dev-backend-chat-handler`
 
 **Tail logs:**
 ```bash
-aws logs tail /aws/lambda/dev-backend-stack- --follow --region us-west-2
+aws logs tail /aws/lambda/file-storage-dev-backend- --follow --region us-west-2
 ```
 
 ## Troubleshooting
 
 ### Lambda Errors
-1. Check logs: `aws logs tail /aws/lambda/dev-backend-stack-<function-name> --follow`
+1. Check logs: `aws logs tail /aws/lambda/file-storage-dev-backend-<function-name> --follow`
 2. Common errors:
    - `AccessDeniedException` → IAM permissions
    - `ResourceNotFoundException` → Missing DynamoDB/S3 resource
@@ -86,14 +86,14 @@ aws cloudwatch get-dashboard --dashboard-name file-storage-dashboard-dev --regio
 
 # Test API (get API URL from stack outputs)
 export API_URL=$(aws cloudformation describe-stacks \
-  --stack-name dev-backend-stack \
+  --stack-name file-storage-dev-backend \
   --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
   --output text)
 curl $API_URL/files?userId=test-user
 
 # Search logs for errors
 aws logs filter-log-events \
-  --log-group-name /aws/lambda/dev-backend-stack-upload-file \
+  --log-group-name /aws/lambda/file-storage-dev-backend-upload-file \
   --filter-pattern "ERROR" \
   --region us-west-2
 ```

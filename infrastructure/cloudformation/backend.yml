@@ -91,13 +91,13 @@ Resources:
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/upload_file/${Environment}/upload_file.zip'
       Environment:
         Variables:
-          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
-          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
-          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
+          FILE_BUCKET_NAME: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
       Timeout: 30
       MemorySize: 256
@@ -110,13 +110,13 @@ Resources:
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/list_files/${Environment}/list_files.zip'
       Environment:
         Variables:
-          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
-          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
-          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
+          FILE_BUCKET_NAME: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
       Timeout: 30
       MemorySize: 256
@@ -129,13 +129,13 @@ Resources:
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/download_file/${Environment}/download_file.zip'
       Environment:
         Variables:
-          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
-          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
-          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
+          FILE_BUCKET_NAME: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
       Timeout: 30
       MemorySize: 256
@@ -148,13 +148,13 @@ Resources:
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/delete_file/${Environment}/delete_file.zip'
       Environment:
         Variables:
-          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
-          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
-          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
+          FILE_BUCKET_NAME: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
       Timeout: 30
       MemorySize: 256
@@ -167,12 +167,12 @@ Resources:
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/share_file/${Environment}/share_file.zip'
       Environment:
         Variables:
-          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
-          SHARED_LINKS_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-SharedLinksTable'
+          FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
       Timeout: 30
       MemorySize: 256
@@ -185,12 +185,12 @@ Resources:
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/mcp_handler/${Environment}/mcp_handler.zip'
       Environment:
         Variables:
-          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
-          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          FILE_BUCKET_NAME: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
           ENVIRONMENT: !Ref Environment
       Timeout: 30
       MemorySize: 256
@@ -203,12 +203,12 @@ Resources:
       Handler: handler.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
         S3Key: !Sub 'lambda-functions/chat_handler/${Environment}/chat_handler.zip'
       Environment:
         Variables:
-          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
-          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          FILE_BUCKET_NAME: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
           MCP_HANDLER_ARN: !GetAtt McpHandlerLambda.Arn
           ENVIRONMENT: !Ref Environment
       Timeout: 60

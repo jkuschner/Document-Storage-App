@@ -5,7 +5,7 @@ This document provides deployment information for the Document Storage App infra
 
 ## Deployed Stacks
 
-### 1. Infrastructure Stack (`dev-infrastructure-stack`)
+### 1. Infrastructure Stack (`file-storage-dev-infrastructure`)
 **Purpose**: Core AWS resources (S3 bucket and DynamoDB tables)
 **Template**: `infrastructure/cloudformation/infrastructure.yml`
 
@@ -19,7 +19,7 @@ This document provides deployment information for the Document Storage App infra
 - `FilesTableName`: DynamoDB table name for file metadata
 - `SharedLinksTableName`: DynamoDB table name for shared links
 
-### 2. Authentication Stack (`dev-auth-stack`)
+### 2. Authentication Stack (`file-storage-dev-auth`)
 **Purpose**: User authentication and authorization
 **Template**: `infrastructure/cloudformation/auth.yml`
 
@@ -33,7 +33,7 @@ This document provides deployment information for the Document Storage App infra
 - `UserPoolClientId`: Cognito User Pool Client ID
 - `IdentityPoolId`: Cognito Identity Pool ID
 
-### 3. Backend Stack (`production-backend-stack`)
+### 3. Backend Stack (`file-storage-dev-backend`)
 **Purpose**: Lambda functions and API Gateway
 **Template**: `infrastructure/cloudformation/backend.yml`
 
@@ -61,7 +61,7 @@ This document provides deployment information for the Document Storage App infra
 **Key Outputs**:
 - `ApiEndpoint`: API Gateway URL (e.g., `https://{api-id}.execute-api.us-west-2.amazonaws.com/dev`)
 
-### 4. Monitoring Stack (`file-storage-monitoring-dev`)
+### 4. Monitoring Stack (`file-storage-dev-monitoring`)
 **Purpose**: CloudWatch monitoring and alerting
 **Template**: `infrastructure/cloudformation/monitoring.yml`
 
@@ -74,7 +74,7 @@ This document provides deployment information for the Document Storage App infra
 - `DashboardURL`: CloudWatch Dashboard URL
 - `AlarmTopicArn`: SNS Topic ARN for notifications
 
-### 5. Frontend Stack (`production-frontend-stack`)
+### 5. Frontend Stack (`file-storage-dev-frontend`)
 **Purpose**: Static website hosting
 **Template**: `infrastructure/cloudformation/frontend.yml`
 
@@ -109,7 +109,7 @@ Lambda functions must be packaged with dependencies before deployment:
 ```bash
 # Package all Lambda functions
 BUCKET_NAME=$(aws cloudformation describe-stacks \
-  --stack-name dev-infrastructure-stack \
+  --stack-name file-storage-dev-infrastructure \
   --query 'Stacks[0].Outputs[?OutputKey==`LambdaCodeBucketName`].OutputValue' \
   --output text \
   --region us-west-2)
@@ -134,32 +134,32 @@ If you need to deploy manually, use the following commands in order:
 # 1. Deploy Infrastructure (S3, DynamoDB)
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation/infrastructure.yml \
-  --stack-name dev-infrastructure-stack \
+  --stack-name file-storage-dev-infrastructure \
   --parameter-overrides Environment=dev
 
 # 2. Deploy Authentication (Cognito)
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation/auth.yml \
-  --stack-name dev-auth-stack \
+  --stack-name file-storage-dev-auth \
   --parameter-overrides Environment=dev
 
 # 3. Deploy Backend (Lambda, API Gateway)
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation/backend.yml \
-  --stack-name production-backend-stack \
+  --stack-name file-storage-dev-backend \
   --parameter-overrides Environment=dev \
   --capabilities CAPABILITY_NAMED_IAM
 
 # 4. Deploy Monitoring (CloudWatch)
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation/monitoring.yml \
-  --stack-name file-storage-monitoring-dev \
+  --stack-name file-storage-dev-monitoring \
   --parameter-overrides Environment=dev AlarmEmail=your-email@example.com
 
 # 5. Deploy Frontend (S3, CloudFront)
 aws cloudformation deploy \
   --template-file infrastructure/cloudformation/frontend.yml \
-  --stack-name production-frontend-stack
+  --stack-name file-storage-dev-frontend
 ```
 
 ## Important URLs and IDs
@@ -167,16 +167,16 @@ aws cloudformation deploy \
 After deployment, you'll need these values for frontend configuration:
 
 ### API Gateway
-- **API URL**: Check the `ApiEndpoint` output from `production-backend-stack`
+- **API URL**: Check the `ApiEndpoint` output from `file-storage-dev-backend`
 - **Example**: `https://abc123def4.execute-api.us-west-2.amazonaws.com/dev`
 
 ### Authentication (for frontend)
-- **User Pool ID**: Check the `UserPoolId` output from `dev-auth-stack`
-- **User Pool Client ID**: Check the `UserPoolClientId` output from `dev-auth-stack`
-- **Identity Pool ID**: Check the `IdentityPoolId` output from `dev-auth-stack`
+- **User Pool ID**: Check the `UserPoolId` output from `file-storage-dev-auth`
+- **User Pool Client ID**: Check the `UserPoolClientId` output from `file-storage-dev-auth`
+- **Identity Pool ID**: Check the `IdentityPoolId` output from `file-storage-dev-auth`
 
 ### Frontend
-- **CloudFront URL**: Check the `CloudFrontURL` output from `production-frontend-stack`
+- **CloudFront URL**: Check the `CloudFrontURL` output from `file-storage-dev-frontend`
 
 ## Testing the Deployment
 
@@ -186,7 +186,7 @@ After deployment, you'll need these values for frontend configuration:
 
 ```bash
 API_URL=$(aws cloudformation describe-stacks \
-  --stack-name production-backend-stack \
+  --stack-name file-storage-dev-backend \
   --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
   --output text \
   --region us-west-2)
