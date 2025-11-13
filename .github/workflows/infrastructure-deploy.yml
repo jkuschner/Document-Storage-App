@@ -38,6 +38,7 @@ jobs:
             --template-file infrastructure/cloudformation/auth.yml \
             --stack-name file-storage-dev-auth \
             --parameter-overrides Environment=dev \
+            --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
 
       - name: Package and Upload Lambda Functions
