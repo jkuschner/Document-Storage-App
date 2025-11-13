@@ -2,9 +2,12 @@ name: Deploy Infrastructure
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
-      - 'infrastructure/**'
+      - 'infrastructure/**'           # CloudFormation templates
+      - 'scripts/**'                  # Deployment/packaging scripts
+      - 'backend/lambda_functions/**' # Lambda function source code
 
 jobs:
   deploy:
