@@ -37,6 +37,24 @@ jobs:
             --parameter-overrides Environment=dev \
             --no-fail-on-empty-changeset
 
+      - name: Package and Upload Lambda Functions
+        run: |
+          echo "Packaging Lambda functions..."
+          
+          # Get Lambda code bucket name from infrastructure stack
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name dev-infrastructure-stack \
+            --query 'Stacks[0].Outputs[?OutputKey==`LambdaCodeBucketName`].OutputValue' \
+            --output text \
+            --region us-west-2)
+          
+          echo "Using bucket: $BUCKET_NAME"
+          
+          # Package and upload all Lambda functions
+          ./scripts/package-lambdas.sh $BUCKET_NAME dev
+          
+          echo "Lambda functions packaged and uploaded"
+
       - name: Deploy Backend Stack
         run: |
           aws cloudformation deploy \

@@ -123,6 +123,46 @@ Resources:
         - !Ref AlarmTopic
       TreatMissingData: notBreaching
 
+  # Lambda Error Alarm - MCP Handler
+  McpHandlerLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-mcp-handler-lambda-errors-${Environment}'
+      AlarmDescription: Trigger alarm if MCP handler Lambda has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${AWS::StackName}-mcp-handler'
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  # Lambda Error Alarm - Chat Handler
+  ChatHandlerLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-chat-handler-lambda-errors-${Environment}'
+      AlarmDescription: Trigger alarm if Chat handler Lambda has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub '${AWS::StackName}-chat-handler'
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
   # API Gateway 5xx Error Alarm
   APIGateway5xxAlarm:
     Type: AWS::CloudWatch::Alarm

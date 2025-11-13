@@ -5,17 +5,19 @@
 **Link:** https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#dashboards:name=file-storage-dashboard-dev
 
 **Metrics:**
-- Lambda: Invocations, Errors, Duration (5 functions)
+- Lambda: Invocations, Errors, Duration (7 functions)
 - API Gateway: Requests, 4XX/5XX errors, Latency
 
 ## Alarms
 
-**Lambda Errors (5):** Threshold 5 errors / 5min
+**Lambda Errors (7):** Threshold 5 errors / 5min (1 error / 5min for MCP functions)
 - `file-storage-upload-lambda-errors-dev`
 - `file-storage-list-lambda-errors-dev`
 - `file-storage-download-lambda-errors-dev`
 - `file-storage-delete-lambda-errors-dev`
 - `file-storage-share-lambda-errors-dev`
+- `file-storage-mcp-handler-lambda-errors-dev`
+- `file-storage-chat-handler-lambda-errors-dev`
 
 **API Gateway (2):**
 - `file-storage-api-5xx-errors-dev` - 10 errors / 5min
@@ -46,6 +48,8 @@ Confirm via email link.
 - `/aws/lambda/dev-backend-stack-download-file`
 - `/aws/lambda/dev-backend-stack-delete-file`
 - `/aws/lambda/dev-backend-stack-share-file`
+- `/aws/lambda/dev-backend-stack-mcp-handler`
+- `/aws/lambda/dev-backend-stack-chat-handler`
 
 **Tail logs:**
 ```bash
@@ -96,7 +100,7 @@ aws logs filter-log-events \
 
 ## Cost Estimate
 - Dashboard: $3/month
-- Alarms (7): $0.70/month
+- Alarms (9): $0.90/month
 - Logs: ~$0.50/GB ingested
 - **Total dev environment:** ~$5-10/month
 

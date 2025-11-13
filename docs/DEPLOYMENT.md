@@ -38,14 +38,16 @@ This document provides deployment information for the Document Storage App infra
 **Template**: `infrastructure/cloudformation/backend.yml`
 
 **Resources Created**:
-- 5 Lambda Functions:
-  - `file-storage-upload-file-dev`
-  - `file-storage-list-files-dev`
-  - `file-storage-download-file-dev`
-  - `file-storage-delete-file-dev`
-  - `file-storage-share-file-dev`
+- **7 Lambda Functions:**
+  - `file-storage-upload-file-dev` - Handle file uploads
+  - `file-storage-list-files-dev` - List user's files
+  - `file-storage-download-file-dev` - Generate download URLs
+  - `file-storage-delete-file-dev` - Delete files
+  - `file-storage-share-file-dev` - Create share links
+  - `file-storage-mcp-handler-dev` - MCP protocol (resources/list, resources/read)
+  - `file-storage-chat-handler-dev` - AI summarization via Bedrock
 - API Gateway: `file-storage-api-dev`
-- IAM Role: `file-storage-lambda-role-dev`
+- IAM Role: `file-storage-lambda-role-dev` (with Bedrock permissions)
 
 **API Endpoints**:
 - `POST /files` - Upload file
@@ -53,6 +55,8 @@ This document provides deployment information for the Document Storage App infra
 - `GET /files/{fileId}` - Download file
 - `DELETE /files/{fileId}` - Delete file
 - `POST /files/{fileId}/share` - Share file
+- `POST /mcp` - MCP protocol handler (resources/list, resources/read)
+- `POST /chat` - AI file summarization (Claude 3.5 Haiku via Bedrock)
 
 **Key Outputs**:
 - `ApiEndpoint`: API Gateway URL (e.g., `https://{api-id}.execute-api.us-west-2.amazonaws.com/dev`)
@@ -82,12 +86,43 @@ This document provides deployment information for the Document Storage App infra
 - `CloudFrontURL`: CloudFront distribution URL
 - `BucketName`: S3 bucket name for hosting
 
+## Prerequisites
+
+### AWS Account Setup
+- AWS CLI configured with appropriate credentials
+- Sufficient IAM permissions for CloudFormation, Lambda, S3, DynamoDB, API Gateway, Cognito, and Bedrock
+
+### AWS Bedrock Access (Required for AI Features)
+1. Navigate to AWS Console → Bedrock → Model Access
+2. Submit Anthropic use case details form
+3. Wait for approval (~10-15 minutes, usually instant)
+4. Verify Claude 3.5 Haiku model is enabled
+
+**Use Case Form Example:**
+- **Category**: Education/Research
+- **Description**: Document storage system for university capstone project. Uses Claude Haiku to generate summaries of uploaded documents (PDFs, text files) for quick content understanding.
+- **Expected Usage**: Low volume, educational testing (~100 API calls/month)
+
+### Lambda Packaging
+Lambda functions must be packaged with dependencies before deployment:
+
+```bash
+# Package all Lambda functions
+BUCKET_NAME=$(aws cloudformation describe-stacks \
+  --stack-name dev-infrastructure-stack \
+  --query 'Stacks[0].Outputs[?OutputKey==`LambdaCodeBucketName`].OutputValue' \
+  --output text \
+  --region us-west-2)
+
+./scripts/package-lambdas.sh $BUCKET_NAME dev
+```
+
 ## Deployment Instructions
 
 ### Automatic Deployment (Recommended)
 The infrastructure is automatically deployed via GitHub Actions when changes are pushed to the `main` branch in the `infrastructure/` directory.
 
-**Prerequisites**:
+**Prerequisites:**
 - AWS credentials configured as GitHub Secrets:
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
@@ -143,6 +178,73 @@ After deployment, you'll need these values for frontend configuration:
 ### Frontend
 - **CloudFront URL**: Check the `CloudFrontURL` output from `production-frontend-stack`
 
+## Testing the Deployment
+
+### Test MCP Endpoints
+
+**1. Test resources/list (List all files)**
+
+```bash
+API_URL=$(aws cloudformation describe-stacks \
+  --stack-name production-backend-stack \
+  --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
+  --output text \
+  --region us-west-2)
+
+curl -X POST ${API_URL}/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"action": "resources/list", "userId": "test-user"}'
+
+# Expected response:
+# {"resources": [{"id": "...", "name": "...", "uri": "s3://...", "mimeType": "...", "size": 0}]}
+```
+
+**2. Test resources/read (Read file content)**
+
+```bash
+curl -X POST ${API_URL}/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "resources/read",
+    "resource_id": "YOUR_FILE_ID",
+    "userId": "test-user"
+  }'
+
+# Expected response:
+# {"content": "file text content...", "fileName": "...", "mimeType": "..."}
+```
+
+### Test AI Summarization
+
+**Generate AI summary of a file**
+
+```bash
+curl -X POST ${API_URL}/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_name": "YOUR_FILE_ID",
+    "userId": "test-user"
+  }'
+
+# Expected response:
+# {
+#   "summary": "AI-generated summary here...",
+#   "fileName": "...",
+#   "contentLength": 1234,
+#   "model": "claude-3.5-haiku-bedrock"
+# }
+```
+
+**Upload a test file for summarization:**
+
+```bash
+# Create test document
+echo "This is a test document with multiple paragraphs for AI summarization testing." > test.txt
+
+# Upload to S3 (requires file metadata in DynamoDB first)
+# Use the upload_file Lambda function through API Gateway
+```
+
 ## Environment Configuration
 
 All stacks are currently configured for the `dev` environment. To deploy to production:
@@ -170,6 +272,38 @@ aws cloudformation describe-stacks --stack-name <stack-name> --query 'Stacks[0].
 # Delete a stack (if needed)
 aws cloudformation delete-stack --stack-name <stack-name>
 ```
+
+## Cost Estimates (Dev Environment)
+
+### Monthly Costs (Approximate)
+
+| Service | Usage | Cost |
+|---------|-------|------|
+| **Lambda** | 1M invocations, 512MB avg | $0.50 |
+| **API Gateway** | 1M requests | $3.50 |
+| **DynamoDB** | Pay-per-request, 1M reads | $0.25 |
+| **S3** | 10GB storage, 1GB transfer | $0.35 |
+| **CloudWatch** | Logs, dashboard, 9 alarms | $5.00 |
+| **Bedrock (Claude Haiku)** | 100 summarizations (~200K tokens) | $1.00 |
+| **Cognito** | 1000 active users | Free tier |
+| **CloudFront** | 10GB data transfer | Free tier |
+
+**Total Estimated Cost:** ~$10-12/month
+
+### Production Cost Optimizations
+- Use Reserved Capacity for DynamoDB if traffic is predictable
+- Enable S3 Intelligent-Tiering for infrequently accessed files
+- Use CloudFront caching to reduce origin requests
+- Monitor Bedrock usage to stay within budget
+
+### Free Tier Benefits (First 12 Months)
+- Lambda: 1M requests/month free
+- API Gateway: 1M requests/month free
+- S3: 5GB storage free
+- DynamoDB: 25GB storage + 200M requests free
+- CloudWatch: 10 custom metrics free
+
+**First-year cost can be as low as $2-3/month within free tier limits.**
 
 ## Next Steps
 

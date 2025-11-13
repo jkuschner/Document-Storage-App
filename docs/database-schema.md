@@ -2,19 +2,21 @@
 
 ## Files Table (files-dev)
 
-**Primary Key:**
-- PK: `userId` (String)
-- SK: `fileId` (String)
+**Primary Key (COMPOSITE KEY):**
+- **Partition Key (HASH)**: `userId` (String) - Required for all queries
+- **Sort Key (RANGE)**: `fileId` (String) - Required for GetItem operations
+
+⚠️ **IMPORTANT**: This table uses a COMPOSITE KEY. You must provide BOTH userId AND fileId for GetItem operations.
 
 **Attributes (Currently Implemented):**
 - fileName (String) - Original file name
-- s3Key (String) - Full S3 object path
-- contentType (String) - MIME type (e.g., image/png)
+- s3Key (String) - Full S3 object path (format: `userId/fileId/fileName`)
+- contentType (String) - MIME type (e.g., image/png, application/pdf)
 - uploadDate (String) - ISO 8601 timestamp
 - status (String) - Upload status: "pending" or "complete"
+- fileSize (Number) - Size in bytes (may be 0 for some files)
 
 **Attributes (Future Enhancement):**
-- fileSize (Number) - Size in bytes
 - lastModified (String) - ISO 8601 timestamp
 - sharedWith (List) - Array of userIds with access
 - folderPath (String) - Virtual folder path (e.g., /docs/work)
@@ -26,9 +28,33 @@
 - Use case: Direct file lookup for sharing (without knowing userId)
 
 **Access Patterns:**
-1. Get all user files: Query by userId
-2. Get specific file: Query userId + fileId
-3. Lookup by fileId: Query fileId-index (used for shared file access)
+
+1. **List all files for a user** (MCP resources/list)
+```python
+   table.scan(
+       FilterExpression='userId = :uid',
+       ExpressionAttributeValues={':uid': user_id}
+   )
+```
+
+2. **Get specific file** (MCP resources/read, Chat handler)
+```python
+   table.get_item(
+       Key={
+           'userId': user_id,
+           'fileId': file_id  # Both keys required!
+       }
+   )
+```
+
+3. **Lookup by fileId only** (Shared links)
+```python
+   table.query(
+       IndexName='fileId-index',
+       KeyConditionExpression='fileId = :fid',
+       ExpressionAttributeValues={':fid': file_id}
+   )
+```
 
 **Billing:** PAY_PER_REQUEST
 

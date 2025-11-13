@@ -1,0 +1,4 @@
+boto3>=1.26.0
+PyPDF2>=3.0.0
+typing-extensions>=4.0.0
+

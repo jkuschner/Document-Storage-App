@@ -60,9 +60,27 @@ Resources:
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/files-${Environment}'
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/files-${Environment}/index/*'
                   - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/SharedLinksTable-${Environment}'
+        - PolicyName: LambdaInvokeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-mcp-handler'
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
 
   # ============================================
-  # LAMBDA FUNCTIONS (5 total)
+  # LAMBDA FUNCTIONS (7 total: 5 base + 2 MCP)
   # ============================================
 
   UploadFileLambda:
@@ -159,6 +177,43 @@ Resources:
       Timeout: 30
       MemorySize: 256
 
+  McpHandlerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-mcp-handler'
+      Runtime: python3.9
+      Handler: handler.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/mcp_handler/${Environment}/mcp_handler.zip'
+      Environment:
+        Variables:
+          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          ENVIRONMENT: !Ref Environment
+      Timeout: 30
+      MemorySize: 256
+
+  ChatHandlerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-chat-handler'
+      Runtime: python3.9
+      Handler: handler.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !ImportValue 'dev-infrastructure-stack-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/chat_handler/${Environment}/chat_handler.zip'
+      Environment:
+        Variables:
+          FILE_BUCKET_NAME: !ImportValue 'dev-infrastructure-stack-FileStorageBucket'
+          FILES_TABLE_NAME: !ImportValue 'dev-infrastructure-stack-FilesTable'
+          MCP_HANDLER_ARN: !GetAtt McpHandlerLambda.Arn
+          ENVIRONMENT: !Ref Environment
+      Timeout: 60
+      MemorySize: 512
+
   # ============================================
   # API GATEWAY
   # ============================================
@@ -193,6 +248,20 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ParentId: !Ref FileIdResource
       PathPart: share
+
+  McpResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !GetAtt MyApiGateway.RootResourceId
+      PathPart: mcp
+
+  ChatResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !GetAtt MyApiGateway.RootResourceId
+      PathPart: chat
 
   # ============================================
   # /files METHODS (GET and POST)
@@ -355,12 +424,96 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ShareFileLambda.Arn}/invocations'
 
+  # ============================================
+  # /mcp METHODS
+  # ============================================
+
+  # POST /mcp
+  McpMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref McpResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${McpHandlerLambda.Arn}/invocations'
+
+  # ============================================
+  # /chat METHODS
+  # ============================================
+
+  # POST /chat
+  ChatMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref ChatResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ChatHandlerLambda.Arn}/invocations'
+
   # OPTIONS /files/{fileId}/share
   ShareOptionsMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref ShareResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # OPTIONS /mcp
+  McpOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref McpResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # OPTIONS /chat
+  ChatOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref ChatResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
       Integration:
@@ -389,6 +542,30 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
 
+  McpHandlerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref McpHandlerLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
+  ChatHandlerLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ChatHandlerLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
+  ChatToMcpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref McpHandlerLambda
+      Action: lambda:InvokeFunction
+      Principal: lambda.amazonaws.com
+      SourceArn: !GetAtt ChatHandlerLambda.Arn
+
   # ============================================
   # API DEPLOYMENT
   # ============================================
@@ -404,6 +581,10 @@ Resources:
       - FilesOptionsMethod
       - FileIdOptionsMethod
       - ShareOptionsMethod
+      - McpMethod
+      - ChatMethod
+      - McpOptionsMethod
+      - ChatOptionsMethod
     Properties:
       RestApiId: !Ref MyApiGateway
 
@@ -472,3 +653,23 @@ Outputs:
     Value: !Ref ApiKey
     Export:
       Name: !Sub '${AWS::StackName}-ApiKeyId'
+
+  McpHandlerArn:
+    Description: MCP Handler Lambda ARN
+    Value: !GetAtt McpHandlerLambda.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-mcp-handler-arn'
+
+  ChatHandlerArn:
+    Description: Chat Handler Lambda ARN
+    Value: !GetAtt ChatHandlerLambda.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-chat-handler-arn'
+
+  McpEndpoint:
+    Description: MCP API endpoint
+    Value: !Sub 'https://${MyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/mcp'
+
+  ChatEndpoint:
+    Description: Chat API endpoint
+    Value: !Sub 'https://${MyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/chat'
