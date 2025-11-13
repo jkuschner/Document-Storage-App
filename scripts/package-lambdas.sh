@@ -43,4 +43,4 @@ for FUNCTION in "${FUNCTIONS[@]}"; do
 done
 
 echo ""
-echo "All Lambda functions packaged and uploaded! Yay"
+echo "All Lambda functions packaged and uploaded!"
