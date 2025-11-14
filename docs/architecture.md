@@ -41,6 +41,19 @@ DATA FLOW - List Files:
 3. Lambda queries DynamoDB by userId
 4. Returns file metadata to user
 
+## Security
+
+**API Authentication:**
+- All API Gateway endpoints use Cognito User Pool authorizers
+- Clients must include valid JWT tokens in the Authorization header: `Authorization: Bearer <token>`
+- Requests without valid tokens are rejected with 401 Unauthorized at the API Gateway level (before reaching Lambda)
+- Only OPTIONS methods allow unauthenticated access for CORS preflight requests
+
+**Token Management:**
+- ID tokens expire after 1 hour
+- Refresh tokens valid for 30 days
+- Token validation happens at API Gateway layer for performance
+
 ## AWS Bedrock Integration
 
 The system integrates AWS Bedrock for AI-powered file analysis:

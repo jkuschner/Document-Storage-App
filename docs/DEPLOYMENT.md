@@ -117,6 +117,62 @@ BUCKET_NAME=$(aws cloudformation describe-stacks \
 ./scripts/package-lambdas.sh $BUCKET_NAME dev
 ```
 
+### API Authentication
+
+All API endpoints require Cognito authentication. Requests must include a valid JWT token in the Authorization header.
+
+**Test Credentials:**
+- Username: `test@example.com`
+- Password: `TestPass123!`
+
+**Getting a Token (CLI):**
+```bash
+# Get User Pool configuration
+USER_POOL_ID=$(aws cloudformation describe-stacks \
+  --stack-name file-storage-dev-auth \
+  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' \
+  --output text)
+
+CLIENT_ID=$(aws cloudformation describe-stacks \
+  --stack-name file-storage-dev-auth \
+  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolClientId`].OutputValue' \
+  --output text)
+
+# Get authentication token
+TOKEN=$(aws cognito-idp admin-initiate-auth \
+  --user-pool-id $USER_POOL_ID \
+  --client-id $CLIENT_ID \
+  --auth-flow ADMIN_USER_PASSWORD_AUTH \
+  --auth-parameters USERNAME=test@example.com,PASSWORD=TestPass123! \
+  --query 'AuthenticationResult.IdToken' \
+  --output text)
+
+# Use token in API requests
+API_URL=$(aws cloudformation describe-stacks \
+  --stack-name file-storage-dev-backend \
+  --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
+  --output text)
+
+curl -X POST ${API_URL}/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "resources/list", "userId": "test@example.com"}'
+```
+
+**For Frontend Integration:**
+All API requests must include the JWT token:
+```javascript
+headers: {
+  'Authorization': `Bearer ${idToken}`,
+  'Content-Type': 'application/json'
+}
+```
+The token is obtained from Cognito after user login and should be stored securely (e.g., in memory or session storage).
+
+**Token Expiration:**
+- ID tokens expire after 1 hour
+- Use refresh tokens to obtain new ID tokens without re-authentication
+
 ## Deployment Instructions
 
 ### Automatic Deployment (Recommended)

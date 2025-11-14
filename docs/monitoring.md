@@ -71,6 +71,49 @@ aws logs tail /aws/lambda/file-storage-dev-backend- --follow --region us-west-2
 2. Test endpoint: `curl <API_GATEWAY_URL>/files?userId=test-user`
 3. Review Lambda logs for the failing function
 
+### Authentication Errors
+
+**Symptoms:**
+- API returning 401 Unauthorized
+- Users unable to access endpoints despite being logged in
+
+**Diagnosis:**
+
+1. **Check API Gateway 4XX errors:**
+```bash
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/ApiGateway \
+  --metric-name 4XXError \
+  --dimensions Name=ApiName,Value=file-storage-api-dev \
+  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
+  --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+  --period 300 \
+  --statistics Sum
+```
+
+2. **Filter CloudWatch logs for auth failures:**
+```bash
+aws logs filter-log-events \
+  --log-group-name API-Gateway-Execution-Logs_<API-ID>/dev \
+  --filter-pattern "UnauthorizedException" \
+  --start-time $(date -d '1 hour ago' +%s)000
+```
+
+3. **Verify token validity:**
+```bash
+# Decode token to check expiration (requires jq)
+echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | jq .exp
+
+# Compare to current time
+date +%s
+```
+
+**Common Causes:**
+- Expired token (tokens valid for 1 hour)
+- Invalid token format (missing "Bearer " prefix)
+- Wrong User Pool (token from different Cognito pool)
+- Client not configured with correct auth flows
+
 ### High Latency
 1. Check Lambda duration in dashboard
 2. Review slow operations in logs (DynamoDB queries, S3)

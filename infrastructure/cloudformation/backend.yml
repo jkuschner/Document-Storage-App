@@ -224,6 +224,16 @@ Resources:
       Name: !Sub '${ProjectName}-api-${Environment}'
       Description: File Storage API
 
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: !Sub '${ProjectName}-cognito-authorizer-${Environment}'
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      RestApiId: !Ref MyApiGateway
+      ProviderARNs:
+        - !ImportValue 'file-storage-dev-auth-UserPoolArn'
+
   # ============================================
   # API GATEWAY RESOURCES
   # ============================================
@@ -274,7 +284,8 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref FilesResource
       HttpMethod: POST
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -287,7 +298,8 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref FilesResource
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -346,7 +358,8 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref FileIdResource
       HttpMethod: GET
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -359,7 +372,8 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref FileIdResource
       HttpMethod: DELETE
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -418,7 +432,8 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref ShareResource
       HttpMethod: POST
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -435,7 +450,8 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref McpResource
       HttpMethod: POST
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -452,7 +468,8 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ResourceId: !Ref ChatResource
       HttpMethod: POST
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
