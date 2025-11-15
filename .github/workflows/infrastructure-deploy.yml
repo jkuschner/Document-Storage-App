@@ -3,7 +3,7 @@ name: Deploy Infrastructure
 on:
   push:
     branches:
-      - main
+      - week-2-test-pipeline
     paths:
       - 'infrastructure/**'           # CloudFormation templates
       - 'scripts/**'                  # Deployment/packaging scripts
