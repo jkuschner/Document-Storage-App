@@ -2,9 +2,12 @@ name: Deploy Infrastructure
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
-      - 'infrastructure/**'
+      - 'infrastructure/**'           # CloudFormation templates
+      - 'scripts/**'                  # Deployment/packaging scripts
+      - 'backend/lambda_functions/**' # Lambda function source code
 
 jobs:
   deploy:
@@ -25,7 +28,7 @@ jobs:
         run: |
           aws cloudformation deploy \
             --template-file infrastructure/cloudformation/infrastructure.yml \
-            --stack-name dev-infrastructure-stack \
+            --stack-name file-storage-dev-infrastructure \
             --parameter-overrides Environment=dev \
             --no-fail-on-empty-changeset
 
@@ -33,15 +36,34 @@ jobs:
         run: |
           aws cloudformation deploy \
             --template-file infrastructure/cloudformation/auth.yml \
-            --stack-name dev-auth-stack \
+            --stack-name file-storage-dev-auth \
             --parameter-overrides Environment=dev \
+            --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
+
+      - name: Package and Upload Lambda Functions
+        run: |
+          echo "Packaging Lambda functions..."
+          
+          # Get Lambda code bucket name from infrastructure stack
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name file-storage-dev-infrastructure \
+            --query 'Stacks[0].Outputs[?OutputKey==`LambdaCodeBucketName`].OutputValue' \
+            --output text \
+            --region us-west-2)
+          
+          echo "Using bucket: $BUCKET_NAME"
+          
+          # Package and upload all Lambda functions
+          ./scripts/package-lambdas.sh $BUCKET_NAME dev
+          
+          echo "Lambda functions packaged and uploaded"
 
       - name: Deploy Backend Stack
         run: |
           aws cloudformation deploy \
             --template-file infrastructure/cloudformation/backend.yml \
-            --stack-name production-backend-stack \
+            --stack-name file-storage-dev-backend \
             --parameter-overrides Environment=dev \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
@@ -50,7 +72,7 @@ jobs:
         run: |
           aws cloudformation deploy \
             --template-file infrastructure/cloudformation/monitoring.yml \
-            --stack-name file-storage-monitoring-dev \
+            --stack-name file-storage-dev-monitoring \
             --parameter-overrides Environment=dev ProjectName=file-storage \
             --no-fail-on-empty-changeset
 
@@ -58,5 +80,5 @@ jobs:
         run: |
           aws cloudformation deploy \
             --template-file infrastructure/cloudformation/frontend.yml \
-            --stack-name production-frontend-stack \
+            --stack-name file-storage-dev-frontend \
             --no-fail-on-empty-changeset

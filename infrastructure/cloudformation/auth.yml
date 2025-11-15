@@ -91,3 +91,9 @@ Outputs:
     Value: !Ref IdentityPool
     Export:
       Name: !Sub '${AWS::StackName}-IdentityPoolId'
+  
+  UserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolArn'

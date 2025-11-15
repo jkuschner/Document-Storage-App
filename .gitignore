@@ -11,8 +11,29 @@
 # production
 /build
 
-# misc
+# Lambda build artifacts
+backend/lambda_functions/*/package/
+backend/lambda_functions/*/*.zip
+build/
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# misc
 .env.local
 .env.development.local
 .env.test.local
