@@ -72,13 +72,20 @@ jobs:
       - name: Update Lambda functions
         run: |
           set -e
+          STACK_NAME="file-storage-dev-backend"
           BUCKET="${{ steps.get_bucket.outputs.bucket }}"
           cd backend/lambda_functions
           for zip_file in *.zip; do
-            function_name=$(basename "$zip_file" .zip)
-            echo "Updating Lambda: file-storage-dev-${function_name}"
+            base_name=$(basename "$zip_file" .zip)
+            lambda_suffix=$(echo "$base_name" | tr '_' '-')  # convert underscores to dashes
+
+            # Construct full function name exactly as CloudFormation did
+            function_name="${STACK_NAME}-${lambda_suffix}"
+
+            echo "Updating Lambda: $function_name"
+
             aws lambda update-function-code \
-              --function-name "file-storage-dev-${function_name}" \
+              --function-name "$function_name" \
               --s3-bucket "$BUCKET" \
               --s3-key "$zip_file"
           done
