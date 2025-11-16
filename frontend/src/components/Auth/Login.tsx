@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { signIn } from "@aws-amplify/auth";
+import { useState, useEffect } from "react";
+import { signIn, signOut, getCurrentUser } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
@@ -7,6 +7,17 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    async function ensureLoggedOut() {
+      try {
+        await getCurrentUser();
+        await signOut();        
+      } catch {
+      }
+    }
+    ensureLoggedOut();
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -22,7 +33,7 @@ export default function Login() {
   return (
     <div
       style={{
-        backgroundColor: "#add8e6", // light blue background
+        backgroundColor: "#add8e6", 
         minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
