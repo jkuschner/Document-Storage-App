@@ -6,31 +6,67 @@ export default function FileUpload() {
 
   async function handleUpload() {
     if (!selectedFile) return;
-    // Mock upload progress
+
+    // Mock upload progress animation
     for (let i = 0; i <= 100; i += 10) {
       setTimeout(() => setProgress(i), i * 20);
     }
   }
 
   return (
-    <div className="p-4">
-      <h3 className="text-lg font-semibold mb-2">Upload File</h3>
+    <div
+      style={{
+        background: "#f8f8f8",
+        padding: "1rem",
+        borderRadius: "8px",
+        marginBottom: "20px",
+        border: "1px solid #ddd",
+      }}
+    >
+      <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "10px" }}>
+        Upload File
+      </h3>
+
       <input
         type="file"
         onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
       />
+
       <button
         onClick={handleUpload}
         disabled={!selectedFile}
-        className="ml-2 bg-blue-500 text-white px-3 py-1 rounded"
+        style={{
+          marginLeft: "10px",
+          backgroundColor: "#1e90ff",
+          color: "white",
+          border: "none",
+          padding: "6px 12px",
+          borderRadius: "5px",
+          cursor: "pointer",
+          opacity: selectedFile ? 1 : 0.5,
+        }}
       >
         Upload
       </button>
+
       {progress > 0 && (
-        <div className="mt-2 w-64 bg-gray-200 rounded">
+        <div
+          style={{
+            marginTop: "10px",
+            width: "250px",
+            background: "#ddd",
+            height: "8px",
+            borderRadius: "4px",
+          }}
+        >
           <div
-            className="bg-blue-600 h-2 rounded"
-            style={{ width: `${progress}%` }}
+            style={{
+              width: `${progress}%`,
+              height: "8px",
+              background: "#1e90ff",
+              borderRadius: "4px",
+              transition: "width 0.3s",
+            }}
           />
         </div>
       )}

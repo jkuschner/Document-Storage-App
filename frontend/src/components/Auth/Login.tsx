@@ -36,7 +36,7 @@ export default function Login() {
   return (
     <div
       style={{
-        backgroundColor: "#add8e6", // light blue background
+        backgroundColor: "#add8e6", 
         minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
