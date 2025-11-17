@@ -28,9 +28,10 @@ def lambda_handler(event, context):
         # Parse request body
         body = json.loads(event.get('body', '{}'))
         file_name = body.get('file_name')
+        file_id = body.get('fileId')
         user_id = body.get('userId', 'test-user')
-        
-        if not file_name:
+
+        if not file_id:
             return {
                 'statusCode': 400,
                 'headers': {
@@ -38,19 +39,19 @@ def lambda_handler(event, context):
                     'Access-Control-Allow-Origin': '*'
                 },
                 'body': json.dumps({
-                    'error': 'Missing file_name',
-                    'message': 'file_name is required'
+                    'error': 'Missing fileId',
+                    'message': 'fileId is required'
                 })
             }
         
-        logger.info(f"Chat handler invoked for file: {file_name}, user: {user_id}")
-        
+        logger.info(f"Chat handler invoked for file: {file_name} (ID: {file_id}), user: {user_id}")
+
         # Step 1: Call mcp_handler to get file content
-        logger.info(f"Invoking MCP handler to read file: {file_name}")
+        logger.info(f"Invoking MCP handler to read file: {file_id}")
         mcp_payload = {
             'body': json.dumps({
                 'action': 'resources/read',
-                'resource_id': file_name,
+                'resource_id': file_id,
                 'userId': user_id
             })
         }

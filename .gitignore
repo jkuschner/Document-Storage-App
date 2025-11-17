@@ -14,6 +14,11 @@
 # Lambda build artifacts
 backend/lambda_functions/*/package/
 backend/lambda_functions/*/*.zip
+backend/lambda_functions/*/*.dist-info/
+backend/lambda_functions/*/PyPDF2/
+backend/lambda_functions/*/boto3/
+backend/lambda_functions/*/botocore/
+infrastructure/cloudformation/packaged.yaml
 build/
 *.zip
 

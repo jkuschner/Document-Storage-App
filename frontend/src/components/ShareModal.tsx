@@ -15,6 +15,7 @@ export default function ShareModal({
   // Generate share link when modal opens
   useEffect(() => {
     shareFile(file.id, expirationHours);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file.id]); // Only run once when modal opens
 
   async function handleGenerateLink() {

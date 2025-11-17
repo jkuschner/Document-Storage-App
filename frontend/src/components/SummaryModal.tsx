@@ -36,6 +36,7 @@ export default function SummaryModal({
 
         const response = await api.post<ChatResponse>("/chat", {
           file_name: fileName,
+          fileId: fileId,
           userId: userId,
         });
 
