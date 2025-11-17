@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { signIn, signOut, getCurrentUser } from "@aws-amplify/auth";
+import { signIn, getCurrentUser } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
@@ -8,16 +8,19 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // Check if user is already logged in
   useEffect(() => {
-    async function ensureLoggedOut() {
+    async function checkAuth() {
       try {
         await getCurrentUser();
-        await signOut();        
+        // Already logged in, redirect to files
+        navigate("/files");
       } catch {
+        // Not logged in, stay on login page
       }
     }
-    ensureLoggedOut();
-  }, []);
+    checkAuth();
+  }, [navigate]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

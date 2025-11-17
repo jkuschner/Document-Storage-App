@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { signUp, confirmSignUp } from "@aws-amplify/auth";
+import { useState, useEffect } from "react";
+import { signUp, confirmSignUp, getCurrentUser } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 import { passwordPolicy } from "../../aws-exports";
 
@@ -10,6 +10,20 @@ export default function Signup() {
   const [stage, setStage] = useState<"signup" | "confirm">("signup");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        await getCurrentUser();
+        // Already logged in, redirect to files
+        navigate("/files");
+      } catch {
+        // Not logged in, stay on signup page
+      }
+    }
+    checkAuth();
+  }, [navigate]);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
