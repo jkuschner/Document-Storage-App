@@ -1,35 +1,26 @@
-import { useState, useEffect } from "react";
-import { signIn, getCurrentUser } from "@aws-amplify/auth";
+import { useState } from "react";
+import { signIn } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  // Check if user is already logged in
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        await getCurrentUser();
-        // Already logged in, redirect to files
-        navigate("/files");
-      } catch {
-        // Not logged in, stay on login page
-      }
-    }
-    checkAuth();
-  }, [navigate]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setLoading(true);
+
     try {
       await signIn({ username: email, password });
       navigate("/files");
     } catch (err: any) {
       setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -93,17 +84,18 @@ export default function Login() {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
               marginTop: "10px",
               padding: "8px",
-              backgroundColor: "#1e90ff",
+              backgroundColor: loading ? "#ccc" : "#1e90ff",
               color: "white",
               border: "none",
               borderRadius: "5px",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 

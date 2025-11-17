@@ -1,11 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import FileUpload from "./FileUpload";
 import SummaryModal from "./SummaryModal";
 import DeleteModal from "./DeleteModal";
 import ShareModal from "./ShareModal";
+import { useFileList, useFileDownload, useFileDelete } from "../hooks/useFiles";
+import { useAuth } from "../hooks/useAuth";
+import FileService from "../services/fileService";
 
 interface FileItem {
-  id: number;
+  id: string;
   name: string;
   size: string;
   date: string;
@@ -14,81 +18,59 @@ interface FileItem {
 }
 
 export default function FileList() {
-  const [files, setFiles] = useState<FileItem[]>([]);
+  const navigate = useNavigate();
+
+  // Use the file list hook
+  const { files: fileMetadata, loading, error, refetch } = useFileList();
+
+  // Use the download hook
+  const { downloadFile } = useFileDownload();
+
+  // Use the delete hook
+  const { deleteFile } = useFileDelete();
+
+  // Use the auth hook
+  const { signOut, user } = useAuth();
+
+  // Map FileMetadata to FileItem for display
+  const files: FileItem[] = fileMetadata.map((file) => ({
+    id: file.fileId,
+    name: file.fileName,
+    size: file.size ? FileService.formatFileSize(file.size) : 'Unknown',
+    date: FileService.formatRelativeTime(file.uploadDate),
+    type: FileService.getFileType(file.fileName, file.contentType),
+    folder: file.folder || "root",
+  }));
+
   const [currentFolder, setCurrentFolder] = useState("root");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [summaryFileId, setSummaryFileId] = useState<number | null>(null);
-  const [deleteFileId, setDeleteFileId] = useState<number | null>(null);
-  const [shareFileId, setShareFileId] = useState<number | null>(null);
-
-  // Load files
-  useEffect(() => {
-  async function fetchFiles() {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const res = await fetch("/files");
-      
-      console.log("Response status:", res.status);
-      console.log("Response headers:", res.headers);
-      
-      if (!res.ok) {
-        throw new Error(`Failed to fetch files: ${res.status}`);
-      }
-      
-      const text = await res.text();
-      console.log("Response text:", text); // See what we got
-      
-      try {
-        const data = JSON.parse(text);
-        console.log("Parsed data:", data); // See parsed result
-        setFiles(data);
-      } catch (parseError) {
-        console.error("❌ /files returned non-JSON:", text);
-        throw new Error("Invalid response format from server");
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to load files");
-      setFiles([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  fetchFiles();
-}, []);
+  const [summaryFileId, setSummaryFileId] = useState<string | null>(null);
+  const [deleteFileId, setDeleteFileId] = useState<string | null>(null);
+  const [shareFileId, setShareFileId] = useState<string | null>(null);
 
   const visibleFiles = files.filter((f) => f.folder === currentFolder);
 
-  function handleSummarize(fileId: number) {
+  function handleSummarize(fileId: string) {
     setSummaryFileId(fileId);
   }
 
-  function handleDelete(fileId: number) {
+  function handleDelete(fileId: string) {
     setDeleteFileId(fileId);
   }
 
-  function handleShare(fileId: number) {
+  function handleShare(fileId: string) {
     setShareFileId(fileId);
   }
 
   async function confirmDelete() {
     if (!deleteFileId) return;
 
-    try {
-      const res = await fetch(`/files/${deleteFileId}`, { method: "DELETE" });
-      
-      if (!res.ok) {
-        throw new Error("Failed to delete file");
-      }
+    const success = await deleteFile(deleteFileId);
 
-      setFiles((prev) => prev.filter((f) => f.id !== deleteFileId));
+    if (success) {
+      // Close the modal
       setDeleteFileId(null);
-    } catch (err: any) {
-      alert(err.message || "Failed to delete file");
+      // Refresh the file list
+      await refetch();
     }
   }
 
@@ -96,15 +78,13 @@ export default function FileList() {
     setDeleteFileId(null);
   }
 
-  function handleDownload(id: number, name: string) {
-    try {
-      const link = document.createElement("a");
-      link.href = `/download/${id}`;
-      link.download = name;
-      link.click();
-    } catch (err) {
-      alert("Failed to download file");
-    }
+  async function handleDownload(id: string, name: string) {
+    await downloadFile(id, name);
+  }
+
+  async function handleLogout() {
+    await signOut();
+    navigate("/login");
   }
 
   const folders = Array.from(
@@ -127,9 +107,33 @@ export default function FileList() {
           margin: "auto",
         }}
       >
-        <h2 style={{ fontSize: "24px", fontWeight: "bold" }}>My Files</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: 0 }}>My Files</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+            {user && (
+              <span style={{ color: "#666", fontSize: "14px" }}>
+                {user.email}
+              </span>
+            )}
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: "8px 16px",
+                background: "#dc3545",
+                color: "white",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+                fontWeight: "500",
+                fontSize: "14px",
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
 
-        <FileUpload />
+        <FileUpload onUploadSuccess={refetch} />
 
         <div style={{ margin: "20px 0" }}>
           <strong>Current Folder:</strong> {currentFolder}
@@ -273,7 +277,11 @@ export default function FileList() {
 
         {/* Modals */}
         {summaryFileId !== null && (
-          <SummaryModal fileId={summaryFileId} onClose={() => setSummaryFileId(null)} />
+          <SummaryModal
+            fileId={summaryFileId}
+            fileName={files.find((x) => x.id === summaryFileId)?.name || ''}
+            onClose={() => setSummaryFileId(null)}
+          />
         )}
 
         {deleteFileId !== null && (

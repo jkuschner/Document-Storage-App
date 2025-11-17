@@ -3,6 +3,8 @@ import Login from "./components/Auth/Login";
 import Signup from "./components/Auth/Signup";
 import ResetPassword from "./components/Auth/ResetPassword";
 import FileList from "./components/FileList";
+import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute";
 
 function App() {
   return (
@@ -11,13 +13,41 @@ function App() {
         {/* Redirect root path to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Auth routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/resetpassword" element={<ResetPassword />} /> {/* <-- changed from /reset */}
+        {/* Public routes - redirect to /files if already logged in */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <PublicRoute>
+              <Signup />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/resetpassword"
+          element={
+            <PublicRoute>
+              <ResetPassword />
+            </PublicRoute>
+          }
+        />
 
-        {/* Main app routes */}
-        <Route path="/files" element={<FileList />} />
+        {/* Protected routes - require authentication */}
+        <Route
+          path="/files"
+          element={
+            <ProtectedRoute>
+              <FileList />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Catch-all for undefined routes */}
         <Route path="*" element={<Navigate to="/login" replace />} />

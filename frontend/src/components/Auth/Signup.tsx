@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { signUp, confirmSignUp, getCurrentUser } from "@aws-amplify/auth";
+import { useState } from "react";
+import { signUp, confirmSignUp } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 import { passwordPolicy } from "../../aws-exports";
 
@@ -9,25 +9,14 @@ export default function Signup() {
   const [confirmationCode, setConfirmationCode] = useState("");
   const [stage, setStage] = useState<"signup" | "confirm">("signup");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  // Check if user is already logged in
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        await getCurrentUser();
-        // Already logged in, redirect to files
-        navigate("/files");
-      } catch {
-        // Not logged in, stay on signup page
-      }
-    }
-    checkAuth();
-  }, [navigate]);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setLoading(true);
+
     try {
       await signUp({
         username: email,
@@ -36,12 +25,16 @@ export default function Signup() {
       setStage("confirm");
     } catch (err: any) {
       setError(err.message || "Signup failed");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setLoading(true);
+
     try {
       await confirmSignUp({
         username: email,
@@ -50,6 +43,8 @@ export default function Signup() {
       navigate("/login");
     } catch (err: any) {
       setError(err.message || "Confirmation failed");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -111,17 +106,18 @@ export default function Signup() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 marginTop: "10px",
                 padding: "8px",
-                backgroundColor: "#1e90ff",
+                backgroundColor: loading ? "#ccc" : "#1e90ff",
                 color: "white",
                 border: "none",
                 borderRadius: "5px",
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
               }}
             >
-              Create Account
+              {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
         ) : (
@@ -145,17 +141,18 @@ export default function Signup() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 marginTop: "10px",
                 padding: "8px",
-                backgroundColor: "#1e90ff",
+                backgroundColor: loading ? "#ccc" : "#1e90ff",
                 color: "white",
                 border: "none",
                 borderRadius: "5px",
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
               }}
             >
-              Confirm
+              {loading ? "Confirming..." : "Confirm"}
             </button>
           </form>
         )}
