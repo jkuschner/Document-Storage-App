@@ -3,7 +3,7 @@ export default function DeleteModal({
   onConfirm,
   onCancel,
 }: {
-  file: { id: number; name: string };
+  file: { id: string; name: string };
   onConfirm: () => void;
   onCancel: () => void;
 }) {

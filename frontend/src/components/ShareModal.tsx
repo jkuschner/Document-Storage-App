@@ -1,55 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useFileShare } from "../hooks/useFiles";
 
 export default function ShareModal({
   file,
   onClose,
 }: {
-  file: { id: number; name: string };
+  file: { id: string; name: string };
   onClose: () => void;
 }) {
-  const [email, setEmail] = useState("");
-  const [permission, setPermission] = useState<"view" | "edit">("view");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const shareLink = `${window.location.origin}/shared/${file.id}`;
+  const { shareFile, sharing, shareUrl, error } = useFileShare();
   const [linkCopied, setLinkCopied] = useState(false);
+  const [expirationHours, setExpirationHours] = useState(24);
 
-  async function handleShare(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setMessage("");
-    setLoading(true);
+  // Generate share link when modal opens
+  useEffect(() => {
+    shareFile(file.id, expirationHours);
+  }, [file.id]); // Only run once when modal opens
 
-    try {
-      const res = await fetch("/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileId: file.id,
-          email,
-          permission,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to share file");
-      }
-
-      setMessage(`File shared successfully with ${email}!`);
-      setEmail("");
-    } catch (err: any) {
-      setError(err.message || "Failed to share file");
-    } finally {
-      setLoading(false);
-    }
+  async function handleGenerateLink() {
+    await shareFile(file.id, expirationHours);
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(shareLink);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
+    if (shareUrl) {
+      navigator.clipboard.writeText(shareUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   }
 
   return (
@@ -60,17 +37,14 @@ export default function ShareModal({
           <strong>{file.name}</strong>
         </p>
 
-        {/* Share via Email */}
-        <form onSubmit={handleShare} style={{ marginBottom: "20px" }}>
+        {/* Expiration Time Selector */}
+        <div style={{ marginBottom: "20px" }}>
           <label style={{ display: "block", marginBottom: "5px", fontWeight: "500" }}>
-            Share with Email
+            Link Expiration
           </label>
-          <input
-            type="email"
-            placeholder="colleague@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
+          <select
+            value={expirationHours}
+            onChange={(e) => setExpirationHours(Number(e.target.value))}
             style={{
               width: "100%",
               padding: "8px",
@@ -78,58 +52,33 @@ export default function ShareModal({
               border: "1px solid #ccc",
               marginBottom: "10px",
             }}
-          />
-
-          <label style={{ display: "block", marginBottom: "5px", fontWeight: "500" }}>
-            Permission
-          </label>
-          <select
-            value={permission}
-            onChange={(e) => setPermission(e.target.value as "view" | "edit")}
-            style={{
-              width: "100%",
-              padding: "8px",
-              borderRadius: "5px",
-              border: "1px solid #ccc",
-              marginBottom: "15px",
-            }}
           >
-            <option value="view">View Only</option>
-            <option value="edit">Can Edit</option>
+            <option value={1}>1 hour</option>
+            <option value={6}>6 hours</option>
+            <option value={24}>24 hours</option>
+            <option value={72}>3 days</option>
+            <option value={168}>7 days</option>
           </select>
 
           <button
-            type="submit"
-            disabled={loading}
+            onClick={handleGenerateLink}
+            disabled={sharing}
             style={{
               width: "100%",
               padding: "10px",
-              background: loading ? "#ccc" : "#28a745",
+              background: sharing ? "#ccc" : "#28a745",
               color: "white",
               border: "none",
               borderRadius: "5px",
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor: sharing ? "not-allowed" : "pointer",
               fontWeight: "500",
             }}
           >
-            {loading ? "Sharing..." : "Share"}
+            {sharing ? "Generating..." : "Generate Share Link"}
           </button>
-        </form>
+        </div>
 
-        {/* Success/Error Messages */}
-        {message && (
-          <div style={{
-            background: "#d4edda",
-            border: "1px solid #c3e6cb",
-            color: "#155724",
-            padding: "10px",
-            borderRadius: "5px",
-            marginBottom: "15px",
-          }}>
-            {message}
-          </div>
-        )}
-
+        {/* Error Message */}
         {error && (
           <div style={{
             background: "#f8d7da",
@@ -139,49 +88,54 @@ export default function ShareModal({
             borderRadius: "5px",
             marginBottom: "15px",
           }}>
-            {error}
+            <strong>Error:</strong> {error}
           </div>
         )}
 
-        {/* Copy Link Section */}
-        <div style={{
-          borderTop: "1px solid #ddd",
-          paddingTop: "15px",
-          marginTop: "15px",
-        }}>
-          <label style={{ display: "block", marginBottom: "5px", fontWeight: "500" }}>
-            Or copy share link
-          </label>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <input
-              type="text"
-              value={shareLink}
-              readOnly
-              style={{
-                flex: 1,
-                padding: "8px",
-                borderRadius: "5px",
-                border: "1px solid #ccc",
-                background: "#f8f8f8",
-              }}
-            />
-            <button
-              onClick={copyLink}
-              style={{
-                padding: "8px 16px",
-                background: linkCopied ? "#28a745" : "#1e90ff",
-                color: "white",
-                border: "none",
-                borderRadius: "5px",
-                cursor: "pointer",
-                fontWeight: "500",
-                minWidth: "80px",
-              }}
-            >
-              {linkCopied ? "✓ Copied" : "Copy"}
-            </button>
+        {/* Share Link Section */}
+        {shareUrl && (
+          <div style={{
+            borderTop: "1px solid #ddd",
+            paddingTop: "15px",
+            marginBottom: "15px",
+          }}>
+            <label style={{ display: "block", marginBottom: "5px", fontWeight: "500" }}>
+              Share Link
+            </label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                style={{
+                  flex: 1,
+                  padding: "8px",
+                  borderRadius: "5px",
+                  border: "1px solid #ccc",
+                  background: "#f8f8f8",
+                }}
+              />
+              <button
+                onClick={copyLink}
+                style={{
+                  padding: "8px 16px",
+                  background: linkCopied ? "#28a745" : "#1e90ff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  minWidth: "80px",
+                }}
+              >
+                {linkCopied ? "✓ Copied" : "Copy"}
+              </button>
+            </div>
+            <p style={{ fontSize: "12px", color: "#666", marginTop: "8px" }}>
+              This link will expire in {expirationHours} hour{expirationHours > 1 ? 's' : ''}
+            </p>
           </div>
-        </div>
+        )}
 
         {/* Close Button */}
         <button

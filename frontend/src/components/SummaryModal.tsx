@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
-import { SafeResponse } from "../utils/SafeResponse";
+import api from "../services/api";
+import { getCurrentUserId } from "../utils/auth";
+
+interface ChatResponse {
+  summary: string;
+  fileName: string;
+  contentLength: number;
+  model: string;
+}
 
 export default function SummaryModal({
   fileId,
+  fileName,
   onClose,
 }: {
-  fileId: number;
+  fileId: string;
+  fileName: string;
   onClose: () => void;
 }) {
   const [summary, setSummary] = useState("");
@@ -16,27 +26,20 @@ export default function SummaryModal({
     async function fetchSummary() {
       setLoading(true);
       setError("");
-      
+
       try {
-        const res = await fetch("/summarize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId }),
+        const userId = await getCurrentUserId();
+
+        if (!userId) {
+          throw new Error("User not authenticated");
+        }
+
+        const response = await api.post<ChatResponse>("/chat", {
+          file_name: fileName,
+          userId: userId,
         });
 
-        if (!res.ok) {
-          throw new Error(`Failed to generate summary: ${res.status}`);
-        }
-
-        const data = await SafeResponse(res);
-
-        if (typeof data === "object" && data !== null && "summary" in data) {
-          setSummary(data.summary);
-        } else if (typeof data === "string") {
-          setSummary(data);
-        } else {
-          throw new Error("Invalid response format");
-        }
+        setSummary(response.summary);
       } catch (err: any) {
         setError(err.message || "Failed to generate summary");
         setSummary("");
@@ -46,7 +49,7 @@ export default function SummaryModal({
     }
 
     fetchSummary();
-  }, [fileId]);
+  }, [fileId, fileName]);
 
   return (
     <div style={overlayStyle}>
