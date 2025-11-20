@@ -44,6 +44,7 @@ def lambda_handler(event, context):
 
         shared_links_table.put_item(
             Item={
+                'shareToken': link_id,
                 'linkId': link_id,
                 'fileId': file_id,
                 'userId': user_id,

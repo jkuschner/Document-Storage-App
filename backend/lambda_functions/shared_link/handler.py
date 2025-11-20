@@ -29,7 +29,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return _response(400, {'error': 'Missing linkId parameter'})
 
         try:
-            response = shared_links_table.get_item(Key={'linkId': link_id})
+            response = shared_links_table.get_item(Key={'shareToken': link_id})
         except ClientError as err:
             print(f"DynamoDB error retrieving link {link_id}: {err}")
             return _response(500, {'error': 'Database error'})
