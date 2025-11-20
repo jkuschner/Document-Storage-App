@@ -6,23 +6,28 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setLoading(true);
+
     try {
       await signIn({ username: email, password });
       navigate("/files");
     } catch (err: any) {
       setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <div
       style={{
-        backgroundColor: "#add8e6", // light blue background
+        backgroundColor: "#add8e6", 
         minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
@@ -79,17 +84,18 @@ export default function Login() {
 
           <button
             type="submit"
+            disabled={loading}
             style={{
               marginTop: "10px",
               padding: "8px",
-              backgroundColor: "#1e90ff",
+              backgroundColor: loading ? "#ccc" : "#1e90ff",
               color: "white",
               border: "none",
               borderRadius: "5px",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
