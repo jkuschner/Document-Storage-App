@@ -67,7 +67,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             {
                 'fileName': file_name,
                 'downloadUrl': download_url,
-                'expiresAt': expires_at,
+                'expiresAt': int(expires_at) if expires_at is not None else None,
             },
         )
 
