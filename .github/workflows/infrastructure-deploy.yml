@@ -59,23 +59,23 @@ jobs:
           
           echo "Lambda functions packaged and uploaded"
 
-          - name: Update Lambda Function Code
-          run: |
-            echo "Updating Lambda functions with new code..."
+      - name: Update Lambda Function Code
+        run: |
+          echo "Updating Lambda functions with new code..."
+          
+          for FUNCTION in upload_file list_files download_file delete_file share_file shared_link mcp_handler chat_handler; do
+            LAMBDA_NAME="file-storage-dev-backend-${FUNCTION//_/-}"
             
-            for FUNCTION in upload_file list_files download_file delete_file share_file shared_link mcp_handler chat_handler; do
-              LAMBDA_NAME="file-storage-dev-backend-${FUNCTION//_/-}"
-              
-              echo "Updating $LAMBDA_NAME..."
-              
-              aws lambda update-function-code \
-                --function-name "$LAMBDA_NAME" \
-                --s3-bucket lambda-code-dev-701804429470 \
-                --s3-key "lambda-functions/${FUNCTION}/dev/${FUNCTION}.zip" \
-                --region us-west-2 || echo "⚠️  $LAMBDA_NAME not found, skipping..."
-            done
+            echo "Updating $LAMBDA_NAME..."
             
-            echo "✅ All Lambda functions updated"
+            aws lambda update-function-code \
+              --function-name "$LAMBDA_NAME" \
+              --s3-bucket lambda-code-dev-701804429470 \
+              --s3-key "lambda-functions/${FUNCTION}/dev/${FUNCTION}.zip" \
+              --region us-west-2 || echo "⚠️  $LAMBDA_NAME not found, skipping..."
+          done
+          
+          echo "✅ All Lambda functions updated"
       - name: Deploy Backend Stack
         run: |
           aws cloudformation deploy \
