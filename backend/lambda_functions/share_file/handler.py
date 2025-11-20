@@ -1,8 +1,10 @@
 import json
 import os
-import boto3
-import uuid
+import secrets
 from datetime import datetime, timedelta
+from typing import Optional
+
+import boto3
 
 dynamodb = boto3.resource('dynamodb')
 
@@ -15,76 +17,89 @@ shared_links_table = dynamodb.Table(SHARED_LINKS_TABLE_NAME)
 
 def lambda_handler(event, context):
     """
-    Creates a shareable link for a file.
+    Creates a shareable link for a file owned by the authenticated user.
     """
     try:
-        # Get fileId from path parameters
-        path_params = event.get('pathParameters', {})
-        file_id = path_params.get('fileId')
-        
-        # Get userId from query params (TODO: from Cognito)
-        query_params = event.get('queryStringParameters') or {}
-        user_id = query_params.get('userId', 'test-user')
-        
-        # Parse request body for expiration
-        body = json.loads(event.get('body', '{}'))
-        expiration_hours = body.get('expirationHours', 24)
-        
+        user_id = _get_user_id(event)
+        if not user_id:
+            return _response(401, {'error': 'Unauthorized'})
+
+        file_id = (event.get('pathParameters') or {}).get('fileId')
         if not file_id:
-            return {
-                'statusCode': 400,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({'error': 'fileId is required'})
-            }
-        
-        # Verify file exists
-        response = files_table.get_item(
+            return _response(400, {'error': 'fileId is required'})
+
+        body = json.loads(event.get('body') or '{}')
+        expiration_hours = _parse_expiration_hours(body.get('expirationHours'))
+
+        file_item = files_table.get_item(
             Key={'userId': user_id, 'fileId': file_id}
-        )
-        
-        if 'Item' not in response:
-            return {
-                'statusCode': 404,
-                'headers': {'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps({'error': 'File not found'})
-            }
-        
-        # Generate share token
-        share_token = str(uuid.uuid4())
+        ).get('Item')
+
+        if not file_item:
+            return _response(404, {'error': 'File not found'})
+
+        link_id = secrets.token_urlsafe(18)
         expiration_time = datetime.utcnow() + timedelta(hours=expiration_hours)
-        
-        # Store share link in DynamoDB
+        expires_at = int(expiration_time.timestamp())
+
         shared_links_table.put_item(
             Item={
-                'shareToken': share_token,
+                'linkId': link_id,
                 'fileId': file_id,
                 'userId': user_id,
+                's3Key': file_item['s3Key'],
+                'fileName': file_item['fileName'],
                 'createdAt': datetime.utcnow().isoformat(),
-                'expiresAt': int(expiration_time.timestamp())  # TTL in epoch seconds
+                'expiresAt': expires_at,
             }
         )
-        
-        # Generate share URL (TODO: use actual domain)
-        share_url = f"https://your-app-domain.com/shared/{share_token}"
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            },
-            'body': json.dumps({
+
+        share_base_url = os.environ.get('SHARE_BASE_URL')
+        if not share_base_url:
+            raise RuntimeError('SHARE_BASE_URL environment variable not set')
+
+        share_url = f"{share_base_url}/shared/{link_id}"
+        return _response(
+            200,
+            {
                 'shareUrl': share_url,
-                'shareToken': share_token,
-                'expiresAt': expiration_time.isoformat(),
-                'message': 'Share link created successfully'
-            })
-        }
-        
-    except Exception as e:
-        print(f"Error creating share link: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {'Access-Control-Allow-Origin': '*'},
-            'body': json.dumps({'error': str(e)})
-        }
+                'expiresAt': expiration_time.isoformat() + 'Z',
+            }
+        )
+
+    except Exception as exc:
+        print(f"Error creating share link: {exc}")
+        return _response(500, {'error': 'Internal server error'})
+
+
+def _get_user_id(event: dict) -> Optional[str]:
+    return (
+        event.get('requestContext', {})
+        .get('authorizer', {})
+        .get('claims', {})
+        .get('sub')
+    )
+
+
+def _clamp(value: int, minimum: int, maximum: int) -> int:
+    return max(minimum, min(value, maximum))
+
+
+def _parse_expiration_hours(raw_value) -> int:
+    default_hours = 24
+    try:
+        value = int(raw_value) if raw_value is not None else default_hours
+    except (TypeError, ValueError):
+        value = default_hours
+    return _clamp(value, 1, 168)
+
+
+def _response(status_code: int, body: dict) -> dict:
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json',
+        },
+        'body': json.dumps(body),
+    }

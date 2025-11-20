@@ -1,0 +1,124 @@
+name: Deploy Backend Lambdas
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/lambda_functions/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  backend-deploy:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: dev
+      AWS_REGION: us-west-2
+      LAMBDA_ARTIFACT_BUCKET: lambda-artifacts-bucket-dev
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          poetry install --with dev
+
+      - name: Run backend tests
+        run: |
+          cd backend
+          poetry run pytest
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Package Lambda functions
+        run: |
+          cd backend/lambda_functions
+          for dir in */; do
+            function_name=$(basename "$dir")
+            echo "Packaging ${function_name}..."
+            cd "$dir"
+
+            if [ -f requirements.txt ]; then
+              pip install -r requirements.txt -t . --upgrade
+            fi
+
+            zip -r "../../${function_name}.zip" . -x "*.pyc" -x "__pycache__/*" -x "*.git*"
+            cd ..
+          done
+
+          cd ..
+          ls -lh *.zip
+
+      - name: Validate Lambda packages
+        run: |
+          cd backend
+          echo "Validating packaged Lambda functions..."
+
+          required_functions=("upload_file" "download_file" "list_files" "delete_file" "share_file" "shared_link")
+
+          for func in "${required_functions[@]}"; do
+            if [ ! -f "${func}.zip" ]; then
+              echo "❌ Missing required package: ${func}.zip"
+              exit 1
+            fi
+
+            size=$(stat -f%z "${func}.zip" 2>/dev/null || stat -c%s "${func}.zip")
+            if [ "$size" -lt 1000 ]; then
+              echo "❌ Package too small (likely empty): ${func}.zip"
+              exit 1
+            fi
+
+            echo "✓ ${func}.zip validated (${size} bytes)"
+          done
+
+          echo "All Lambda packages validated successfully"
+
+      - name: Upload to S3
+        run: |
+          cd backend
+          for zip_file in *.zip; do
+            echo "Uploading ${zip_file} to S3..."
+            aws s3 cp "$zip_file" "s3://${LAMBDA_ARTIFACT_BUCKET}/${zip_file}"
+          done
+        env:
+          LAMBDA_ARTIFACT_BUCKET: ${{ env.LAMBDA_ARTIFACT_BUCKET }}
+
+      - name: Update Lambda functions
+        run: |
+          cd backend
+          for zip_file in *.zip; do
+            function_name=$(basename "$zip_file" .zip)
+            lambda_function_name="file-storage-${ENVIRONMENT}-${function_name}"
+
+            echo "Updating Lambda function: ${lambda_function_name}"
+
+            if aws lambda get-function --function-name "${lambda_function_name}" >/dev/null 2>&1; then
+              aws lambda update-function-code \
+                --function-name "${lambda_function_name}" \
+                --s3-bucket "${LAMBDA_ARTIFACT_BUCKET}" \
+                --s3-key "${zip_file}"
+
+              echo "✓ Updated ${lambda_function_name}"
+            else
+              echo "⚠ Function ${lambda_function_name} does not exist yet (will be created by CloudFormation)"
+            fi
+          done
+        env:
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          LAMBDA_ARTIFACT_BUCKET: ${{ env.LAMBDA_ARTIFACT_BUCKET }}
+

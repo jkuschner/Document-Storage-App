@@ -1,63 +1,154 @@
-# tests/test_share_file.py
+import copy
 import json
 import os
-import pytest
+from datetime import datetime, timedelta
+
 import boto3
-from moto import mock_aws
+import pytest
+from moto import mock_dynamodb
 
-from lambda_functions.share_file.handler import lambda_handler
+os.environ['FILES_TABLE_NAME'] = 'test-files-table'
+os.environ['SHARED_LINKS_TABLE_NAME'] = 'test-shared-links-table'
+os.environ['SHARE_BASE_URL'] = 'https://api.example.com/test'
 
-TEST_BUCKET_NAME = 'test-dummy-bucket'
-TEST_REGION = 'us-west-2'
-TEST_FILENAME = 'document_to_share.txt'
+from lambda_functions.share_file.handler import lambda_handler  # noqa: E402
 
-MOCK_EVENT = {
-    'queryStringParameters': {'filename': TEST_FILENAME},
-}
 
-@mock_aws
-def test_share_file_url_is_generated():
-    """
-    Tests that the handler successfully generates a presigned URL and verifies its components.
-    """
-    # Create mock S3 environment
-    s3_client = boto3.client('s3', region_name=TEST_REGION)
-    s3_client.create_bucket(
-        Bucket=TEST_BUCKET_NAME,
-        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
-    )
-    
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME 
-    
-    # Call the handler
-    response = lambda_handler(MOCK_EVENT, None)
+@pytest.fixture
+def dynamodb_tables():
+    with mock_dynamodb():
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    # Check the response structure and URL content
+        files_table = dynamodb.create_table(
+            TableName='test-files-table',
+            KeySchema=[
+                {'AttributeName': 'userId', 'KeyType': 'HASH'},
+                {'AttributeName': 'fileId', 'KeyType': 'RANGE'},
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'userId', 'AttributeType': 'S'},
+                {'AttributeName': 'fileId', 'AttributeType': 'S'},
+            ],
+            BillingMode='PAY_PER_REQUEST',
+        )
+
+        shared_links_table = dynamodb.create_table(
+            TableName='test-shared-links-table',
+            KeySchema=[
+                {'AttributeName': 'linkId', 'KeyType': 'HASH'},
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'linkId', 'AttributeType': 'S'},
+            ],
+            BillingMode='PAY_PER_REQUEST',
+        )
+
+        yield files_table, shared_links_table
+
+
+@pytest.fixture
+def sample_file_record():
+    return {
+        'userId': 'test-user-123',
+        'fileId': 'file-456',
+        'fileName': 'document.pdf',
+        's3Key': 'test-user-123/file-456/document.pdf',
+        'uploadedAt': '2025-11-17T10:00:00Z',
+    }
+
+
+@pytest.fixture
+def valid_event():
+    return {
+        'requestContext': {
+            'authorizer': {
+                'claims': {
+                    'sub': 'test-user-123',
+                }
+            }
+        },
+        'pathParameters': {
+            'fileId': 'file-456',
+        },
+        'body': json.dumps({'expirationHours': 24}),
+    }
+
+
+def test_share_file_success(dynamodb_tables, sample_file_record, valid_event):
+    files_table, shared_links_table = dynamodb_tables
+    files_table.put_item(Item=sample_file_record)
+
+    response = lambda_handler(valid_event, None)
+
     assert response['statusCode'] == 200
-    body_data = json.loads(response['body'])
+    body = json.loads(response['body'])
+    assert body['shareUrl'].startswith('https://api.example.com/test/shared/')
+    assert 'expiresAt' in body
 
-    # check that a URL was returned
-    assert 'url' in body_data
-    generated_url = body_data['url']
+    link_id = body['shareUrl'].split('/')[-1]
+    record = shared_links_table.get_item(Key={'linkId': link_id})
+    assert 'Item' in record
+    assert record['Item']['fileId'] == 'file-456'
+    assert record['Item']['userId'] == 'test-user-123'
+    assert record['Item']['s3Key'] == sample_file_record['s3Key']
+    assert record['Item']['fileName'] == sample_file_record['fileName']
 
-    # Check the URL contains key S3 elements
-    assert TEST_BUCKET_NAME in generated_url
-    assert TEST_FILENAME in generated_url
 
-    # check for expiration query parameter
-    assert 'Expires=' in generated_url
+def test_share_file_missing_jwt_claims(valid_event):
+    event = copy.deepcopy(valid_event)
+    event['requestContext'] = {}
 
-@mock_aws
-def test_share_file_missing_filename():
-    """
-    Tests the handler's response when the filename query parameter is missing.
-    """
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-    
-    # Call the handler with an empty event
-    missing_event = {}
-    response = lambda_handler(missing_event, None)
+    response = lambda_handler(event, None)
+    assert response['statusCode'] == 401
+    assert 'Unauthorized' in json.loads(response['body'])['error']
 
-    # Check for 400 Bad Request
+
+def test_share_file_missing_file_id(valid_event):
+    event = copy.deepcopy(valid_event)
+    event['pathParameters'] = {}
+
+    response = lambda_handler(event, None)
     assert response['statusCode'] == 400
-    assert 'Missing filename query parameter' in json.loads(response['body'])['message']
+
+
+def test_share_file_not_found(dynamodb_tables, valid_event):
+    _, _ = dynamodb_tables
+    response = lambda_handler(valid_event, None)
+    assert response['statusCode'] == 404
+
+
+def test_share_file_wrong_owner(dynamodb_tables, sample_file_record, valid_event):
+    files_table, _ = dynamodb_tables
+    files_table.put_item(Item=sample_file_record)
+
+    event = copy.deepcopy(valid_event)
+    event['requestContext']['authorizer']['claims']['sub'] = 'other-user'
+
+    response = lambda_handler(event, None)
+    assert response['statusCode'] == 404
+
+
+def test_share_file_custom_expiration(dynamodb_tables, sample_file_record, valid_event):
+    files_table, _ = dynamodb_tables
+    files_table.put_item(Item=sample_file_record)
+
+    event = copy.deepcopy(valid_event)
+    event['body'] = json.dumps({'expirationHours': 48})
+
+    response = lambda_handler(event, None)
+    body = json.loads(response['body'])
+    expires_at = datetime.fromisoformat(body['expiresAt'].replace('Z', '+00:00'))
+    expected = datetime.utcnow() + timedelta(hours=48)
+    assert abs((expires_at - expected).total_seconds()) < 10
+
+
+def test_share_file_expiration_clamping(dynamodb_tables, sample_file_record, valid_event):
+    files_table, _ = dynamodb_tables
+    files_table.put_item(Item=sample_file_record)
+
+    event = copy.deepcopy(valid_event)
+    event['body'] = json.dumps({'expirationHours': 0})
+    assert lambda_handler(event, None)['statusCode'] == 200
+
+    event['body'] = json.dumps({'expirationHours': 1000})
+    assert lambda_handler(event, None)['statusCode'] == 200

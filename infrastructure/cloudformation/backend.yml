@@ -80,7 +80,7 @@ Resources:
                   - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
 
   # ============================================
-  # LAMBDA FUNCTIONS (7 total: 5 base + 2 MCP)
+  # LAMBDA FUNCTIONS (8 total: 5 base + 2 MCP + shared link)
   # ============================================
 
   UploadFileLambda:
@@ -174,6 +174,27 @@ Resources:
           FILES_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-FilesTable'
           SHARED_LINKS_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
           ENVIRONMENT: !Ref Environment
+          SHARE_BASE_URL: !Sub 'https://${MyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+      Timeout: 30
+      MemorySize: 256
+
+  SharedLinkLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-shared-link'
+      Runtime: python3.9
+      Handler: handler.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !ImportValue 'file-storage-dev-infrastructure-LambdaCodeBucket'
+        S3Key: !Sub 'lambda-functions/shared_link/${Environment}/shared_link.zip'
+      Environment:
+        Variables:
+          FILE_BUCKET_NAME: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          FILE_BUCKET: !ImportValue 'file-storage-dev-infrastructure-FileStorageBucket'
+          SHARED_LINKS_TABLE_NAME: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
+          SHARED_LINKS_TABLE: !ImportValue 'file-storage-dev-infrastructure-SharedLinksTable'
+          ENVIRONMENT: !Ref Environment
       Timeout: 30
       MemorySize: 256
 
@@ -258,6 +279,20 @@ Resources:
       RestApiId: !Ref MyApiGateway
       ParentId: !Ref FileIdResource
       PathPart: share
+
+  SharedResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !GetAtt MyApiGateway.RootResourceId
+      PathPart: shared
+
+  SharedLinkIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !Ref SharedResource
+      PathPart: '{linkId}'
 
   McpResource:
     Type: AWS::ApiGateway::Resource
@@ -500,6 +535,52 @@ Resources:
             method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Origin: true
 
+  # ============================================
+  # /shared/{linkId} METHODS (PUBLIC)
+  # ============================================
+
+  SharedLinkGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref SharedLinkIdResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SharedLinkLambda.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+
+  SharedLinkOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref SharedLinkIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
   # OPTIONS /mcp
   McpOptionsMethod:
     Type: AWS::ApiGateway::Method
@@ -559,6 +640,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
 
+  SharedLinkLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SharedLinkLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*'
+
   McpHandlerLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -595,9 +684,11 @@ Resources:
       - DownloadFileMethod
       - DeleteFileMethod
       - ShareFileMethod
+      - SharedLinkGetMethod
       - FilesOptionsMethod
       - FileIdOptionsMethod
       - ShareOptionsMethod
+      - SharedLinkOptionsMethod
       - McpMethod
       - ChatMethod
       - McpOptionsMethod
