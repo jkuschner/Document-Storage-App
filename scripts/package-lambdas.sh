@@ -10,9 +10,9 @@ BUCKET_NAME="$1"
 ENVIRONMENT="$2"
 FUNCTIONS_DIR="backend/lambda_functions"
 BUILD_DIR="build/lambda-packages"
-FUNCTIONS=("upload_file" "list_files" "download_file" "delete_file" "share_file" "mcp_handler" "chat_handler")
+FUNCTIONS=("upload_file" "list_files" "download_file" "delete_file" "share_file" "shared_link" "mcp_handler" "chat_handler")
 
-echo "Packaging Lambda functions for deployment..."
+echo "Packaging Lambda functions for deployment.."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
