@@ -49,7 +49,7 @@ jobs:
           echo "CloudFront Distribution ID set."
 
       - name: Sync Files to S3
-        run: aws s3 sync frontend/dist "s3://$BUCKET_NAME" --delete
+        run: aws s3 sync frontend/build "s3://$BUCKET_NAME" --delete
 
       - name: Invalidate CloudFront Cache
         run: |
