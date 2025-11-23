@@ -1,0 +1,61 @@
+name: Frontend Deploy
+
+on:
+  push:
+    branches: ["week-2-test-pipeline"]
+    paths:
+      - 'frontend/**'
+      - 'infrastructure/cloudformation/frontend.yml'
+
+jobs:
+  deploy:
+    name: Deploy React Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Get S3 Bucket Name from CloudFormation
+        run: |
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name file-storage-dev-frontend \
+            --query "Stacks[0].Outputs[?OutputKey=='BucketName'].OutputValue" \
+            --output text)
+          echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+          echo "Detected Bucket: $BUCKET_NAME"
+
+      - name: Get CloudFront Distribution ID from CloudFormation
+        run: |
+          echo "DISTRIBUTION_ID=E1YA1HJ2B2TSEQ" >> $GITHUB_ENV
+          echo "CloudFront Distribution ID set."
+
+      - name: Sync Files to S3
+        run: aws s3 sync frontend/dist "s3://$BUCKET_NAME" --delete
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*"
