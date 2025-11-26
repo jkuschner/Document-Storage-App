@@ -22,7 +22,7 @@ def lambda_handler(event, context):
     try:
         user_id = _get_user_id(event)
         if not user_id:
-            return _response(401, {'error': 'Unauthorized'})
+            return _response(401, {'error': 'Unauthorized: Missing or invalid authentication token'})
 
         file_id = (event.get('pathParameters') or {}).get('fileId')
         if not file_id:
