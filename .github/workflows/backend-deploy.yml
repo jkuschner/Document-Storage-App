@@ -52,14 +52,15 @@ jobs:
             cd ..
           done
 
-      - name: Get Lambda artifacts bucket name
-        id: get_bucket
-        run: |
+      - name: Get Lambda artifacts bucket from CloudFormation
+        run: | #echo "BUCKET_NAME=lambda-code-dev-701804429470" >> $GITHUB_ENV
           BUCKET_NAME=$(aws cloudformation describe-stacks \
             --stack-name file-storage-dev-infrastructure \
             --query 'Stacks[0].Outputs[?OutputKey==`LambdaCodeBucketName`].OutputValue' \
             --output text)
           echo "bucket=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
+
 
       - name: Upload Lambda packages to S3
         run: |

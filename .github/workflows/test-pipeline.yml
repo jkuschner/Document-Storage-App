@@ -30,6 +30,17 @@ jobs:
         env:
           JEST_JUNIT_OUTPUT_DIR: test-results
           CI: true
+          REACT_APP_API_URL: ${{ env.REACT_APP_API_URL }}
+
+      - name: Get API URL from CloudFormation
+        id: get_api_url
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name file-storage-dev-backend \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
+            --output text \
+            --region us-west-2)
+          echo "REACT_APP_API_URL=$API_URL" >> $GITHUB_ENV
 
       - name: Upload test result reports
         if: always()
@@ -65,7 +76,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: fake
           AWS_SECRET_ACCESS_KEY: fake
-          AWS_DEFAULT_REGION: us-east-1
+          AWS_DEFAULT_REGION: us-west-2
 
       - name: Upload backend test results
         if: always()
@@ -88,22 +99,23 @@ jobs:
           python-version: 3.11
 
       - name: Install dependencies
-        working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov boto3 moto
+          pip install pytest requests boto3
 
       - name: Run integration tests
+        working-directory: tests/integration
         run: |
-          mkdir -p test-results
-          PYTHONPATH=backend pytest tests/integration/test_file_operations.py --disable-warnings --maxfail=1 --junitxml=test-results/integration-results.xml
+          echo "Using integration_config.json:"
+          cat integration_config.json
+          pytest -q --disable-warnings --maxfail=1
 
       - name: Upload integration test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-results
-          path: backend/test-results/
+          path: tests/integration
 
   security-scan:
     name: Security & Dependency Scan
@@ -135,6 +147,14 @@ jobs:
     name: Backend Deploy
     needs: integration-tests
     uses: ./.github/workflows/backend-deploy.yml
-    secrets:
+    with:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: frontend-tests
+    uses: ./.github/workflows/frontend-deploy.yml
+    with:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }

@@ -1,0 +1,6 @@
+{
+  "api_base_url": "https://ks437z2jhj.execute-api.us-west-2.amazonaws.com/dev",
+  "mcp_url": "https://awevwxhys43vu6fpnqfrawpqem0mlwqa.lambda-url.us-west-2.on.aws/",
+  "chat_url": "https://hm42o7sjcvdqp3pt3bcu4rlwji0owvia.lambda-url.us-west-2.on.aws/",
+  "test_user": "test-user"
+}

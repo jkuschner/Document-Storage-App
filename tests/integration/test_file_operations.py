@@ -1,90 +1,59 @@
 import json
 import os
-import pytest
-import boto3
-from moto import mock_aws
+import uuid
+import requests
 
-# Import your Lambda handlers
-from lambda_functions.upload_file.handler import lambda_handler as upload_handler
-from lambda_functions.list_files.handler import lambda_handler as list_handler
-from lambda_functions.delete_file.handler import lambda_handler as delete_handler
+# Load integration configuration
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "integration_config.json")
+with open(CONFIG_PATH, "r") as f:
+    config = json.load(f)
 
-# Constants for the test
-TEST_BUCKET = "test-dummy-bucket"
-TEST_REGION = "us-west-2"
-TEST_USER = "test-user"
-TEST_FILE = "integration_test_file.txt"
-FILES_TABLE = "files-dev"
+API_BASE = config["api_base_url"]
+TEST_USER = config["test_user"]
 
 
-@mock_aws
-def test_file_operations():
-    """End-to-end integration test: upload → list → delete → verify deletion."""
+def test_file_operations_end_to_end():
+    """
+    End-to-end test of file upload → list → delete using the deployed API Gateway.
+    """
 
-    # Set environment variables for Lambda handlers
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET
-    os.environ['FILES_TABLE_NAME'] = FILES_TABLE
+    file_name = f"itest-{uuid.uuid4()}.txt"
 
-    # Create mock S3 bucket
-    s3_client = boto3.client('s3', region_name=TEST_REGION)
-    s3_client.create_bucket(
-        Bucket=TEST_BUCKET,
-        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
-    )
-
-    # Create mock DynamoDB table
-    dynamodb = boto3.resource('dynamodb', region_name=TEST_REGION)
-    dynamodb.create_table(
-        TableName=FILES_TABLE,
-        KeySchema=[
-            {"AttributeName": "userId", "KeyType": "HASH"},
-            {"AttributeName": "fileId", "KeyType": "RANGE"},
-        ],
-        AttributeDefinitions=[
-            {"AttributeName": "userId", "AttributeType": "S"},
-            {"AttributeName": "fileId", "AttributeType": "S"},
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
-  
-    # Upload file
-  
-    upload_event = {
-        "body": json.dumps({
-            "fileName": TEST_FILE,
-            "userId": TEST_USER,
-            "contentType": "text/plain"
-        })
+    # 1. Create upload request
+    upload_url = f"{API_BASE}/upload"
+    upload_payload = {
+        "fileName": file_name,
+        "contentType": "text/plain",
+        "userId": TEST_USER
     }
-    upload_response = upload_handler(upload_event, None, dynamodb_resource=dynamodb)
-    assert upload_response['statusCode'] == 200
-    upload_body = json.loads(upload_response['body'])
-    file_id = upload_body['fileId']
+
+    upload_resp = requests.post(upload_url, json=upload_payload)
+    assert upload_resp.status_code == 200
+
+    upload_body = upload_resp.json()
     assert "uploadUrl" in upload_body
-    assert upload_body["message"] == "Upload URL generated successfully"
+    assert "fileId" in upload_body
+    file_id = upload_body["fileId"]
 
-    # List files
-    
-    list_event = {"queryStringParameters": {"userId": TEST_USER}}
-    list_response = list_handler(list_event, None, dynamodb_resource=dynamodb)
-    assert list_response['statusCode'] == 200
-    files_list = json.loads(list_response['body'])["files"]
-    assert any(f["fileId"] == file_id for f in files_list)
+    # 2. Upload file content to S3 pre-signed URL
+    put_resp = requests.put(upload_body["uploadUrl"], data=b"Hello Integration Test")
+    assert put_resp.status_code in [200, 204]
 
-    
-    # Delete file
-   
-    delete_event = {
-        "pathParameters": {"fileId": file_id},
-        "queryStringParameters": {"userId": TEST_USER}
-    }
-    delete_response = delete_handler(delete_event, None, dynamodb_resource=dynamodb)
-    assert delete_response['statusCode'] == 200
-    delete_body = json.loads(delete_response['body'])
-    assert delete_body["message"] == "File deleted successfully"
+    # 3. List files
+    list_url = f"{API_BASE}/list?userId={TEST_USER}"
+    list_resp = requests.get(list_url)
+    assert list_resp.status_code == 200
 
-    # Verify deletion
-   
-    list_response_after_delete = list_handler(list_event, None, dynamodb_resource=dynamodb)
-    files_after_delete = json.loads(list_response_after_delete['body'])["files"]
-    assert not any(f["fileId"] == file_id for f in files_after_delete)
+    files = list_resp.json()["files"]
+    assert any(f["fileId"] == file_id for f in files)
+
+    # 4. Delete file
+    delete_url = f"{API_BASE}/delete/{file_id}?userId={TEST_USER}"
+    delete_resp = requests.delete(delete_url)
+    assert delete_resp.status_code == 200
+    assert delete_resp.json()["message"].lower().startswith("file deleted")
+
+    # 5. Verify deletion
+    list_after = requests.get(list_url)
+    files_after = list_after.json()["files"]
+    assert not any(f["fileId"] == file_id for f in files_after)
