@@ -147,7 +147,7 @@ jobs:
     name: Backend Deploy
     needs: integration-tests
     uses: ./.github/workflows/backend-deploy.yml
-    with:
+    secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -155,6 +155,6 @@ jobs:
     name: Deploy Frontend
     needs: frontend-tests
     uses: ./.github/workflows/frontend-deploy.yml
-    with:
+    secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }

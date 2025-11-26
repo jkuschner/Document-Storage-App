@@ -3,6 +3,8 @@ name: Frontend Deploy
 on:
   push:
     branches: ["week-2-test-pipeline"]
+    paths:
+     - 'frontend/**'
 
 jobs:
   deploy:
