@@ -5,42 +5,41 @@ import time
 
 import boto3
 import pytest
-from moto import mock_dynamodb, mock_s3
+from moto import mock_aws
 
 os.environ['SHARED_LINKS_TABLE'] = 'test-shared-links-table'
 os.environ['FILE_BUCKET'] = 'test-file-bucket'
 
-from lambda_functions.shared_link.handler import lambda_handler  # noqa: E402
+from lambda_functions.shared_link.handler import lambda_handler #noqa: E402
+
+def aws_env():
+    """Single mock_aws fixture to cover DynamoDB + S3."""
+    with mock_aws():
+        yield
 
 
 @pytest.fixture
-def dynamodb_table():
-    with mock_dynamodb():
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        table = dynamodb.create_table(
-            TableName='test-shared-links-table',
-            KeySchema=[
-                {'AttributeName': 'linkId', 'KeyType': 'HASH'},
-            ],
-            AttributeDefinitions=[
-                {'AttributeName': 'linkId', 'AttributeType': 'S'},
-            ],
-            BillingMode='PAY_PER_REQUEST',
-        )
-        yield table
+def dynamodb_table(aws_env):
+    dynamodb = boto3.resource('dynamodb', region_name='us-west-2')
+    table = dynamodb.create_table(
+        TableName='test-shared-links-table',
+        KeySchema=[{'AttributeName': 'linkId', 'KeyType': 'HASH'}],
+        AttributeDefinitions=[{'AttributeName': 'linkId', 'AttributeType': 'S'}],
+        BillingMode='PAY_PER_REQUEST',
+    )
+    return table
 
 
 @pytest.fixture
-def s3_bucket():
-    with mock_s3():
-        s3 = boto3.client('s3', region_name='us-east-1')
-        s3.create_bucket(Bucket='test-file-bucket')
-        s3.put_object(
-            Bucket='test-file-bucket',
-            Key='test-user/test-file/document.pdf',
-            Body=b'test-content',
-        )
-        yield s3
+def s3_bucket(aws_env):
+    s3 = boto3.client('s3', region_name='us-west-2')
+    s3.create_bucket(Bucket='test-file-bucket')
+    s3.put_object(
+        Bucket='test-file-bucket',
+        Key='test-user/test-file/document.pdf',
+        Body=b'test-content',
+    )
+    return s3
 
 
 @pytest.fixture

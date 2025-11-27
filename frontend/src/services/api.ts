@@ -2,13 +2,17 @@ import { fetchAuthSession } from '@aws-amplify/auth';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
-if (!API_URL || API_URL.includes('your-api-gateway-id')) {
-  console.warn(
-    '⚠️  API_URL not configured. Please set REACT_APP_API_URL in your .env file.\n' +
-    'Get the URL from CloudFormation outputs:\n' +
-    'aws cloudformation describe-stacks --stack-name file-storage-dev-backend --query "Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue" --output text --region us-west-2'
-  );
+// Suppress API_URL warnings during test runs
+if (process.env.NODE_ENV !== 'test') {
+  if (!API_URL || API_URL.includes('your-api-gateway-id')) {
+    console.warn(
+      '⚠️  API_URL not configured. Please set REACT_APP_API_URL in your .env file.\n' +
+        'Get the URL from CloudFormation outputs:\n' +
+        'aws cloudformation describe-stacks --stack-name file-storage-dev-backend --query "Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue" --output text --region us-west-2'
+    );
+  }
 }
+
 
 export interface ApiError {
   message: string;
