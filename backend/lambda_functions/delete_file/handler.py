@@ -21,10 +21,9 @@ def lambda_handler(event, context,dynamodb_resource = None):
         # Get fileId from path parameters
         path_params = event.get('pathParameters', {})
         file_id = path_params.get('fileId')
-        
-        # Get userId from query params (TODO: from Cognito)
-        query_params = event.get('queryStringParameters') or {}
-        user_id = query_params.get('userId', 'test-user')
+
+        # Get userId from JWT token (Cognito authorizer)
+        user_id = event['requestContext']['authorizer']['claims']['sub']
         
         if not file_id:
             return {
@@ -46,8 +45,17 @@ def lambda_handler(event, context,dynamodb_resource = None):
             }
         
         file_item = response['Item']
+
+        # Verify user owns this file
+        if file_item.get('userId') != user_id:
+            return {
+                'statusCode': 403,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'Access denied. You do not have permission to delete this file.'})
+            }
+
         s3_key = file_item['s3Key']
-        
+
         # Delete from S3
         s3_client.delete_object(
             Bucket=FILE_BUCKET_NAME,
