@@ -16,6 +16,13 @@ TEST_TABLE_NAME = 'files-dev'
 MOCK_EVENT = {
     "pathParameters": {"fileId": TEST_FILENAME},
     "queryStringParameters": {"userId": TEST_USER_ID},
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": TEST_USER_ID
+            }
+        }
+    }
 }
 
 @mock_aws
