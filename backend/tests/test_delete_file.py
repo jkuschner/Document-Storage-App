@@ -130,13 +130,11 @@ def test_delete_nonexistent_file_success():
     # This fileId doesn't exist in the table
     missing_event = {
     "pathParameters": {"fileId": "nonexistent-file"},
-    "queryStringParameters": {"userId": TEST_USER_ID},
+    "queryStringParameters": {"userId": TEST_USER_ID},  # optional, only if your code uses it
     "requestContext": {
         "authorizer": {
-            "jwt": {
-                "claims": {
-                    "sub": TEST_USER_ID
-                }
+            "claims": {
+                "sub": TEST_USER_ID
             }
         }
     }
