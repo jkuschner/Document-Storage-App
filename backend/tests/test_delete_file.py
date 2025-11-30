@@ -129,18 +129,18 @@ def test_delete_nonexistent_file_success():
 
     # This fileId doesn't exist in the table
     missing_event = {
-        'pathParameters': {'fileId': 'nonexistent-file'},
-        'queryStringParameters': {'userId': TEST_USER_ID},
-        'requestContext': {
-        'authorizer': {
-            'jwt': {
-                'claims': {
-                    'sub': TEST_USER_ID   # Fake authenticated user
+    "pathParameters": {"fileId": "nonexistent-file"},
+    "queryStringParameters": {"userId": TEST_USER_ID},
+    "requestContext": {
+        "authorizer": {
+            "jwt": {
+                "claims": {
+                    "sub": TEST_USER_ID
                 }
             }
         }
     }
-    }
+}
 
     import lambda_functions.delete_file.handler as handler_module
     import importlib
