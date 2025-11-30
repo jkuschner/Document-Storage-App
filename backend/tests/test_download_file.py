@@ -18,6 +18,13 @@ TEST_TABLE_NAME = 'files-dev'
 MOCK_EVENT = {
     "pathParameters": {"fileId": TEST_FILENAME},
     "queryStringParameters": {"userId": TEST_USER_ID},
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": TEST_USER_ID
+            }
+        }
+    }
 }
 
 @mock_aws
@@ -134,7 +141,14 @@ def test_download_file_not_found():
 
     missing_event = {
         'pathParameters': {'fileId': 'nonexistent-file'},
-        'queryStringParameters': {'userId': TEST_USER_ID}
+        'queryStringParameters': {'userId': TEST_USER_ID},
+        "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": TEST_USER_ID
+            }
+        }
+    }
     }
 
     import lambda_functions.download_file.handler as handler_module
