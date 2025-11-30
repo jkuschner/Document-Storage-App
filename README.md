@@ -171,6 +171,10 @@ Document-Storage-App/
 
 ## Architecture Diagrams
 
+### AWS Architecture
+
+![AWS Architecture Diagram](docs/diagrams/documentApp-aws-architecture.png)
+
 ### File Upload Flow
 ```
 User → Cognito Auth → API Gateway → upload_file Lambda
