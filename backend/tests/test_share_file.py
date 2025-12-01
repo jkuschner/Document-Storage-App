@@ -74,18 +74,19 @@ def valid_event():
     }
 
 def patch_boto(monkeypatch, files_table, shared_links_table):
-
     class MockDynamoResource:
         def Table(self, name):
             if name == os.environ["FILES_TABLE_NAME"]:
                 return files_table
             elif name == os.environ["SHARED_LINKS_TABLE_NAME"]:
                 return shared_links_table
-            raise ValueError(f"Unknown table name: {name}")
+            else:
+                raise ValueError(f"Unexpected table name: {name}")
 
-    mock_boto3 = type("boto3_mock", (), {"resource": lambda *_: MockDynamoResource()})()
-    monkeypatch.setattr(handler_module, "boto3", mock_boto3)
-
+    monkeypatch.setattr(
+        "lambda_functions.share_file.handler.boto3",
+        type("boto3_mock", (), {"resource": lambda *_: MockDynamoResource()})
+    )
 
 def test_share_file_success(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
     files_table, shared_links_table = dynamodb_tables
@@ -127,15 +128,14 @@ def test_share_file_missing_file_id(valid_event):
 
 
 def test_share_file_not_found(monkeypatch, dynamodb_tables, valid_event):
-    _, _ = dynamodb_tables
-
+    files_table, shared_links_table = dynamodb_tables
     patch_boto(monkeypatch, files_table, shared_links_table)
     response = lambda_handler(valid_event, None)
     assert response['statusCode'] == 404
 
 
 def test_share_file_wrong_owner(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
-    files_table, _ = dynamodb_tables
+    files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
 
     patch_boto(monkeypatch, files_table, shared_links_table)
@@ -148,7 +148,7 @@ def test_share_file_wrong_owner(monkeypatch, dynamodb_tables, sample_file_record
 
 
 def test_share_file_custom_expiration(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
-    files_table, _ = dynamodb_tables
+    files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
 
     patch_boto(monkeypatch, files_table, shared_links_table)
@@ -164,7 +164,7 @@ def test_share_file_custom_expiration(monkeypatch, dynamodb_tables, sample_file_
 
 
 def test_share_file_expiration_clamping(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
-    files_table, _ = dynamodb_tables
+    files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
 
     patch_boto(monkeypatch, files_table, shared_links_table)
