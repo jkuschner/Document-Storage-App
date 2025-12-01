@@ -159,7 +159,7 @@ def test_share_file_custom_expiration(monkeypatch, dynamodb_tables, sample_file_
     response = lambda_handler(event, None)
     body = json.loads(response['body'])
     expires_at = datetime.fromisoformat(body['expiresAt'].replace('Z', '+00:00'))
-    expected = datetime.utcnow() + timedelta(hours=48)
+    expected = datetime.now(timezone.utc) + timedelta(hours=48)
     assert abs((expires_at - expected).total_seconds()) < 10
 
 
