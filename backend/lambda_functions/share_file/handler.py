@@ -46,19 +46,22 @@ def lambda_handler(event, context,dynamodb_resource = None):
         now = datetime.now(timezone.utc)
         expiration_time = now + timedelta(hours=expiration_hours)
 
+        naive_now = now.replace(tzinfo=None)
+        naive_exp = expiration_time.replace(tzinfo=None)
+
         link_id = secrets.token_urlsafe(18)
         expires_at = int(expiration_time.timestamp())
 
         shared_links_table.put_item(
             Item={
-                'shareToken': link_id,
+                #'shareToken': link_id,
                 'linkId': link_id,
                 'fileId': file_id,
                 'userId': user_id,
                 's3Key': file_item['s3Key'],
                 'fileName': file_item['fileName'],
-                'createdAt': now.isoformat().replace("+00:00", "Z"),
-                'expiresAt': expires_at,
+                'createdAt': naive_now.isoformat() + "Z",
+                'expiresAt': int(expiration_time.timestamp()),
             }
         )
 
@@ -71,7 +74,7 @@ def lambda_handler(event, context,dynamodb_resource = None):
             200,
             {
                 'shareUrl': share_url,
-                'expiresAt': expiration_time.isoformat().replace("+00:00", "Z"),
+                'expiresAt': naive_exp.isoformat() + "Z",
             }
         )
 
