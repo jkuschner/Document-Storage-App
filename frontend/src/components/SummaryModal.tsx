@@ -51,21 +51,35 @@ export default function SummaryModal({
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        <h3 style={{ marginTop: 0 }}>AI-Generated File Summary</h3>
+        <h3 style={{
+          margin: "0 0 20px 0",
+          fontSize: "20px",
+          fontWeight: "600",
+          color: "#1e293b",
+        }}>
+          AI-generated summary
+        </h3>
 
         {/* Loading State */}
         {loading && (
-          <div style={{ textAlign: "center", padding: "2rem" }}>
+          <div style={{
+            textAlign: "center",
+            padding: "48px 24px",
+          }}>
             <div style={{
               border: "4px solid #f3f3f3",
-              borderTop: "4px solid #1e90ff",
+              borderTop: "4px solid #16a34a",
               borderRadius: "50%",
-              width: "40px",
-              height: "40px",
+              width: "48px",
+              height: "48px",
               animation: "spin 1s linear infinite",
-              margin: "0 auto"
+              margin: "0 auto",
             }} />
-            <p style={{ marginTop: "15px", color: "#666" }}>
+            <p style={{
+              marginTop: "20px",
+              color: "#6b7280",
+              fontSize: "14px",
+            }}>
               Generating AI summary...
             </p>
             <style>{`
@@ -80,12 +94,13 @@ export default function SummaryModal({
         {/* Error State */}
         {error && !loading && (
           <div style={{
-            background: "#f8d7da",
-            border: "1px solid #f5c6cb",
-            color: "#721c24",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "15px",
+            background: "#fee",
+            border: "1px solid #fcc",
+            color: "#b91c1c",
+            padding: "16px",
+            borderRadius: "6px",
+            marginBottom: "16px",
+            fontSize: "14px",
           }}>
             <strong>Error:</strong> {error}
           </div>
@@ -94,13 +109,16 @@ export default function SummaryModal({
         {/* Success State */}
         {summary && !loading && !error && (
           <div style={{
-            background: "#f8f9fa",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "15px",
+            background: "#f9fafb",
+            padding: "20px",
+            borderRadius: "6px",
+            marginBottom: "20px",
             maxHeight: "400px",
             overflowY: "auto",
             lineHeight: "1.6",
+            fontSize: "14px",
+            color: "#374151",
+            border: "1px solid #e5e7eb",
           }}>
             {summary}
           </div>
@@ -108,12 +126,35 @@ export default function SummaryModal({
 
         {/* No Summary Available */}
         {!summary && !loading && !error && (
-          <p style={{ color: "#666", textAlign: "center", padding: "20px" }}>
-            No summary available for this file.
-          </p>
+          <div style={{
+            textAlign: "center",
+            padding: "48px 24px",
+            color: "#9ca3af",
+          }}>
+            <p style={{ fontSize: "14px", margin: 0 }}>
+              No summary available for this file.
+            </p>
+          </div>
         )}
 
-        <button onClick={onClose} style={buttonStyle}>Close</button>
+        <button
+          onClick={onClose}
+          style={{
+            width: "100%",
+            padding: "12px",
+            background: "#16a34a",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: "600",
+            fontSize: "14px",
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#15803d"}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#16a34a"}
+        >
+          Close
+        </button>
       </div>
     </div>
   );
@@ -127,27 +168,16 @@ const overlayStyle = {
   justifyContent: "center",
   alignItems: "center",
   zIndex: 1000,
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
 } as const;
 
 const modalStyle = {
   background: "white",
-  padding: "25px",
-  borderRadius: "10px",
-  width: "500px",
+  padding: "28px",
+  borderRadius: "8px",
+  width: "560px",
   maxWidth: "90vw",
-  boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
   maxHeight: "90vh",
   overflowY: "auto",
-} as const;
-
-const buttonStyle = {
-  marginTop: "10px",
-  width: "100%",
-  padding: "10px",
-  background: "#1e90ff",
-  color: "white",
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: "500",
 } as const;

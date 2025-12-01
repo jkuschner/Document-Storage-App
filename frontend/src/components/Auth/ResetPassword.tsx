@@ -1,36 +1,31 @@
-// Import React hooks and Amplify authentication methods
 import { useState } from "react";
 import { resetPassword, confirmResetPassword } from "@aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 import { passwordPolicy } from "../../aws-exports";
 
-// Main component for the Reset Password page
 export default function ResetPassword() {
-  // Define state variables to store form data and messages
-  const [email, setEmail] = useState(""); // User's email address
-  const [code, setCode] = useState(""); // Confirmation code sent to email
-  const [newPassword, setNewPassword] = useState(""); // New password input
-  const [stage, setStage] = useState<"request" | "confirm">("request"); // Tracks form stage (request → confirm)
-  const [error, setError] = useState(""); // Stores error messages
-  const [message, setMessage] = useState(""); // Stores success/info messages
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [stage, setStage] = useState<"request" | "confirm">("request");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  const navigate = useNavigate(); // Used to navigate between pages
+  const navigate = useNavigate();
 
-  // Handles the first form submission (requesting password reset)
   async function requestReset(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setMessage("");
     try {
       await resetPassword({ username: email });
-      setStage("confirm"); // Switch to confirmation stage
+      setStage("confirm");
       setMessage("A confirmation code has been sent to your email.");
     } catch (err: any) {
       setError(err.message || "Failed to send reset code.");
     }
   }
 
-  // Handles the second form submission (confirming new password)
   async function confirmReset(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -42,170 +37,257 @@ export default function ResetPassword() {
         newPassword,
       });
       setMessage("Password successfully reset. You can now log in.");
-      navigate("/login"); // Navigate back to the login page
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err: any) {
       setError(err.message || "Failed to reset password.");
     }
   }
 
-  // JSX (UI) section
   return (
-    // Outer container that gives the light blue full-screen background and centers everything
     <div
       style={{
-        backgroundColor: "#add8e6", // Light blue background
-        minHeight: "100vh", // Fill the full height of the page
-        display: "flex", // Enable flexbox layout
-        justifyContent: "center", // Center horizontally
-        alignItems: "center", // Center vertically
+        backgroundColor: "#f7f9fa",
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
       }}
     >
-      {/* White box that holds the form content */}
       <div
         style={{
           backgroundColor: "white",
-          padding: "2rem",
-          borderRadius: "10px",
-          boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)", // Soft drop shadow
-          width: "320px", // Fixed width for consistent sizing
-          display: "flex",
-          flexDirection: "column", // Stack children vertically
-          alignItems: "stretch",
+          padding: "48px 40px",
+          borderRadius: "8px",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)",
+          width: "400px",
+          maxWidth: "90vw",
         }}
       >
-        {/* Conditionally render one of two forms based on the stage */}
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <h2 style={{ 
+            margin: 0,
+            fontSize: "24px",
+            fontWeight: "500",
+            color: "#1e293b",
+          }}>
+            {stage === "request" ? "Reset password" : "Enter code"}
+          </h2>
+        </div>
+
         {stage === "request" ? (
-          // === Stage 1: User enters email to request a reset code ===
-          <form
-            onSubmit={requestReset}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px", // Adds spacing between elements
-            }}
-          >
-            <h2 style={{ textAlign: "center" }}>Reset Password</h2>
-
-            <label>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                padding: "8px",
-                borderRadius: "5px",
-                border: "1px solid #ccc",
-              }}
-            />
-
-            {/* Display password policy for consistency with signup page */}
-            <p style={{ color: "gray", fontSize: "14px" }}>
-              Password must be at least {passwordPolicy.minLength} characters
-              {passwordPolicy.requireUppercase ? ", include uppercase letters" : ""}
-              {passwordPolicy.requireNumbers ? ", include numbers" : ""}
-              {passwordPolicy.requireSymbols ? ", include symbols" : ""}.
+          <form onSubmit={requestReset}>
+            <p style={{
+              fontSize: "14px",
+              color: "#6b7280",
+              marginBottom: "24px",
+              lineHeight: "1.5",
+            }}>
+              Enter your email address and we'll send you a code to reset your password.
             </p>
 
-            {/* Submit button to send reset code */}
+            <div style={{ marginBottom: "24px" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "14px",
+                fontWeight: "500",
+                color: "#374151",
+              }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: "6px",
+                  border: "1px solid #d1d5db",
+                  fontSize: "15px",
+                  boxSizing: "border-box",
+                  outline: "none",
+                }}
+                onFocus={(e) => e.target.style.borderColor = "#16a34a"}
+                onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
+              />
+            </div>
+
             <button
               type="submit"
               style={{
-                marginTop: "10px",
-                padding: "8px",
-                backgroundColor: "#1e90ff",
+                width: "100%",
+                padding: "14px",
+                backgroundColor: "#16a34a",
                 color: "white",
                 border: "none",
-                borderRadius: "5px",
+                borderRadius: "6px",
+                fontSize: "15px",
+                fontWeight: "600",
                 cursor: "pointer",
               }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#15803d"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#16a34a"}
             >
-              Send Code
+              Send code
             </button>
           </form>
         ) : (
-          // === Stage 2: User enters the code and new password ===
-          <form
-            onSubmit={confirmReset}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-            }}
-          >
-            <h2 style={{ textAlign: "center" }}>Enter Code</h2>
+          <form onSubmit={confirmReset}>
+            <p style={{
+              fontSize: "14px",
+              color: "#6b7280",
+              marginBottom: "24px",
+              lineHeight: "1.5",
+            }}>
+              We sent a code to <strong>{email}</strong>. Enter it below along with your new password.
+            </p>
 
-            <label>Confirmation Code</label>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              required
-              style={{
-                padding: "8px",
-                borderRadius: "5px",
-                border: "1px solid #ccc",
-              }}
-            />
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "14px",
+                fontWeight: "500",
+                color: "#374151",
+              }}>
+                Confirmation code
+              </label>
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: "6px",
+                  border: "1px solid #d1d5db",
+                  fontSize: "15px",
+                  boxSizing: "border-box",
+                  outline: "none",
+                }}
+                onFocus={(e) => e.target.style.borderColor = "#16a34a"}
+                onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
+              />
+            </div>
 
-            <label>New Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              style={{
-                padding: "8px",
-                borderRadius: "5px",
-                border: "1px solid #ccc",
-              }}
-            />
+            <div style={{ marginBottom: "8px" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "14px",
+                fontWeight: "500",
+                color: "#374151",
+              }}>
+                New password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: "6px",
+                  border: "1px solid #d1d5db",
+                  fontSize: "15px",
+                  boxSizing: "border-box",
+                  outline: "none",
+                }}
+                onFocus={(e) => e.target.style.borderColor = "#16a34a"}
+                onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
+              />
+            </div>
 
-            {/* Show password policy for clarity */}
-            <p style={{ color: "gray", fontSize: "14px" }}>
+            <p style={{ 
+              color: "#6b7280", 
+              fontSize: "12px",
+              marginTop: "8px",
+              marginBottom: "24px",
+              lineHeight: "1.5",
+            }}>
               Password must be at least {passwordPolicy.minLength} characters
               {passwordPolicy.requireUppercase ? ", include uppercase letters" : ""}
               {passwordPolicy.requireNumbers ? ", include numbers" : ""}
               {passwordPolicy.requireSymbols ? ", include symbols" : ""}.
             </p>
 
-            {/* Submit button to confirm reset */}
             <button
               type="submit"
               style={{
-                marginTop: "10px",
-                padding: "8px",
-                backgroundColor: "#1e90ff",
+                width: "100%",
+                padding: "14px",
+                backgroundColor: "#16a34a",
                 color: "white",
                 border: "none",
-                borderRadius: "5px",
+                borderRadius: "6px",
+                fontSize: "15px",
+                fontWeight: "600",
                 cursor: "pointer",
               }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#15803d"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#16a34a"}
             >
-              Reset Password
+              Reset password
             </button>
           </form>
         )}
 
-        {/* Display error or success messages */}
-        {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
-        {message && <p style={{ color: "green", textAlign: "center" }}>{message}</p>}
+        {error && (
+          <div style={{
+            marginTop: "16px",
+            padding: "12px",
+            backgroundColor: "#fee",
+            border: "1px solid #fcc",
+            borderRadius: "6px",
+            color: "#b91c1c",
+            fontSize: "14px",
+          }}>
+            {error}
+          </div>
+        )}
 
-        {/* Navigation button back to Login page */}
-        <button
-          onClick={() => navigate("/login")}
-          style={{
-            marginTop: "15px",
-            padding: "8px",
-            backgroundColor: "transparent",
-            border: "1px solid #1e90ff",
-            borderRadius: "5px",
-            color: "#1e90ff",
-            cursor: "pointer",
-          }}
-        >
-          Back to Login
-        </button>
+        {message && (
+          <div style={{
+            marginTop: "16px",
+            padding: "12px",
+            backgroundColor: "#dcfce7",
+            border: "1px solid #bbf7d0",
+            borderRadius: "6px",
+            color: "#15803d",
+            fontSize: "14px",
+          }}>
+            {message}
+          </div>
+        )}
+
+        <div style={{
+          marginTop: "24px",
+          paddingTop: "24px",
+          borderTop: "1px solid #e5e7eb",
+          textAlign: "center",
+        }}>
+          <span style={{ fontSize: "14px", color: "#6b7280" }}>
+            Remember your password?{" "}
+          </span>
+          <button
+            onClick={() => navigate("/login")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#16a34a",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
+            }}
+          >
+            Sign in
+          </button>
+        </div>
       </div>
     </div>
   );

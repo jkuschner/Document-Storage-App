@@ -23,43 +23,36 @@ export default function FileList() {
   const [deleteFileId, setDeleteFileId] = useState<number | null>(null);
   const [shareFileId, setShareFileId] = useState<number | null>(null);
 
-  // Load files
   useEffect(() => {
-  async function fetchFiles() {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const res = await fetch("/files");
-      
-      console.log("Response status:", res.status);
-      console.log("Response headers:", res.headers);
-      
-      if (!res.ok) {
-        throw new Error(`Failed to fetch files: ${res.status}`);
-      }
-      
-      const text = await res.text();
-      console.log("Response text:", text); // See what we got
+    async function fetchFiles() {
+      setLoading(true);
+      setError(null);
       
       try {
-        const data = JSON.parse(text);
-        console.log("Parsed data:", data); // See parsed result
-        setFiles(data);
-      } catch (parseError) {
-        console.error("❌ /files returned non-JSON:", text);
-        throw new Error("Invalid response format from server");
+        const res = await fetch("/files");
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch files: ${res.status}`);
+        }
+        
+        const text = await res.text();
+        
+        try {
+          const data = JSON.parse(text);
+          setFiles(data);
+        } catch (parseError) {
+          throw new Error("Invalid response format from server");
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to load files");
+        setFiles([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load files");
-      setFiles([]);
-    } finally {
-      setLoading(false);
     }
-  }
 
-  fetchFiles();
-}, []);
+    fetchFiles();
+  }, []);
 
   const visibleFiles = files.filter((f) => f.folder === currentFolder);
 
@@ -116,57 +109,119 @@ export default function FileList() {
   ).filter((f) => f !== currentFolder);
 
   return (
-    <div style={{ background: "#add8e6", minHeight: "100vh", padding: "2rem" }}>
-      <div
-        style={{
-          background: "white",
-          padding: "2rem",
-          borderRadius: "10px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-          width: "800px",
-          margin: "auto",
-        }}
-      >
-        <h2 style={{ fontSize: "24px", fontWeight: "bold" }}>My Files</h2>
+    <div style={{ 
+      background: "#f7f9fa", 
+      minHeight: "100vh",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+    }}>
+      {/* Header Bar */}
+      <div style={{
+        background: "white",
+        borderBottom: "1px solid #e5e7eb",
+        padding: "16px 24px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <h1 style={{ 
+          margin: 0, 
+          fontSize: "20px", 
+          fontWeight: "600",
+          color: "#1e293b",
+        }}>
+          My Files
+        </h1>
+      </div>
 
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 24px" }}>
         <FileUpload />
 
-        <div style={{ margin: "20px 0" }}>
-          <strong>Current Folder:</strong> {currentFolder}
+        {/* Breadcrumb Navigation */}
+        <div style={{ 
+          marginBottom: "24px",
+          padding: "12px 16px",
+          background: "white",
+          borderRadius: "8px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontSize: "14px",
+        }}>
+          <button
+            onClick={() => setCurrentFolder("root")}
+            style={{
+              background: "none",
+              border: "none",
+              color: currentFolder === "root" ? "#1e293b" : "#16a34a",
+              cursor: currentFolder === "root" ? "default" : "pointer",
+              fontSize: "14px",
+              fontWeight: currentFolder === "root" ? "600" : "500",
+              padding: "4px 8px",
+              borderRadius: "4px",
+            }}
+            onMouseEnter={(e) => {
+              if (currentFolder !== "root") e.currentTarget.style.backgroundColor = "#f0fdf4";
+            }}
+            onMouseLeave={(e) => {
+              if (currentFolder !== "root") e.currentTarget.style.backgroundColor = "transparent";
+            }}
+          >
+            Home
+          </button>
 
           {currentFolder !== "root" && (
-            <button
-              onClick={() => setCurrentFolder("root")}
-              style={{ color: "#1e90ff", marginLeft: "10px", background: "none", border: "none", cursor: "pointer" }}
-            >
-              ⬅️ Back to Root
-            </button>
+            <>
+              <span style={{ color: "#9ca3af" }}>/</span>
+              <span style={{ color: "#1e293b", fontWeight: "600" }}>{currentFolder}</span>
+            </>
           )}
 
-          {folders.map((f) => (
-            <button
-              key={f}
-              onClick={() => setCurrentFolder(f)}
-              style={{ color: "#1e90ff", marginLeft: "10px", background: "none", border: "none", cursor: "pointer" }}
-            >
-              📁 Open {f}
-            </button>
-          ))}
+          {folders.length > 0 && (
+            <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+              {folders.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setCurrentFolder(f)}
+                  style={{
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    color: "#15803d",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#dcfce7"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f0fdf4"}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Loading Spinner */}
+        {/* Loading State */}
         {loading && (
-          <div style={{ textAlign: "center", padding: "2rem" }}>
+          <div style={{
+            background: "white",
+            borderRadius: "8px",
+            padding: "64px",
+            textAlign: "center",
+          }}>
             <div style={{
               border: "4px solid #f3f3f3",
-              borderTop: "4px solid #1e90ff",
+              borderTop: "4px solid #16a34a",
               borderRadius: "50%",
-              width: "40px",
-              height: "40px",
+              width: "48px",
+              height: "48px",
               animation: "spin 1s linear infinite",
-              margin: "0 auto"
+              margin: "0 auto",
             }} />
-            <p style={{ marginTop: "10px", color: "#666" }}>Loading files...</p>
+            <p style={{ marginTop: "16px", color: "#6b7280", fontSize: "14px" }}>
+              Loading files...
+            </p>
             <style>{`
               @keyframes spin {
                 0% { transform: rotate(0deg); }
@@ -176,27 +231,37 @@ export default function FileList() {
           </div>
         )}
 
-        {/* Error Message */}
+        {/* Error State */}
         {error && !loading && (
           <div style={{
-            background: "#fee",
-            border: "1px solid #fcc",
+            background: "white",
             borderRadius: "8px",
-            padding: "1rem",
-            marginBottom: "1rem",
-            color: "#c33"
+            padding: "24px",
+            border: "1px solid #fecaca",
           }}>
-            <strong>Error:</strong> {error}
+            <div style={{
+              color: "#b91c1c",
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}>
+              <div>
+                <strong>Error:</strong> {error}
+              </div>
+            </div>
             <button
               onClick={() => window.location.reload()}
               style={{
-                marginLeft: "10px",
-                padding: "4px 8px",
-                background: "#c33",
+                marginTop: "16px",
+                padding: "8px 16px",
+                background: "#dc2626",
                 color: "white",
                 border: "none",
-                borderRadius: "4px",
-                cursor: "pointer"
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
               }}
             >
               Retry
@@ -206,69 +271,212 @@ export default function FileList() {
 
         {/* Files Table */}
         {!loading && !error && (
-          <>
+          <div style={{
+            background: "white",
+            borderRadius: "8px",
+            overflow: "hidden",
+            border: "1px solid #e5e7eb",
+          }}>
             {visibleFiles.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
-                <p>No files in this folder</p>
+              <div style={{
+                textAlign: "center",
+                padding: "64px 24px",
+                color: "#9ca3af",
+              }}>
+                <p style={{ fontSize: "16px", margin: 0 }}>No files in this folder</p>
               </div>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ borderBottom: "2px solid #ddd" }}>
-                    <th style={{ textAlign: "left", padding: "10px" }}>Name</th>
-                    <th style={{ textAlign: "left", padding: "10px" }}>Type</th>
-                    <th style={{ textAlign: "left", padding: "10px" }}>Size</th>
-                    <th style={{ textAlign: "left", padding: "10px" }}>Date</th>
-                    <th style={{ textAlign: "left", padding: "10px" }}>Actions</th>
+                  <tr style={{
+                    background: "#f9fafb",
+                    borderBottom: "1px solid #e5e7eb",
+                  }}>
+                    <th style={{
+                      textAlign: "left",
+                      padding: "14px 16px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}>
+                      Name
+                    </th>
+                    <th style={{
+                      textAlign: "left",
+                      padding: "14px 16px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}>
+                      Type
+                    </th>
+                    <th style={{
+                      textAlign: "left",
+                      padding: "14px 16px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}>
+                      Size
+                    </th>
+                    <th style={{
+                      textAlign: "left",
+                      padding: "14px 16px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}>
+                      Modified
+                    </th>
+                    <th style={{
+                      textAlign: "right",
+                      padding: "14px 16px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}>
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {visibleFiles.map((file) => (
-                    <tr key={file.id} style={{ borderBottom: "1px solid #eee" }}>
-                      <td style={{ padding: "10px" }}>{file.name}</td>
-                      <td style={{ padding: "10px" }}>{file.type}</td>
-                      <td style={{ padding: "10px" }}>{file.size}</td>
-                      <td style={{ padding: "10px" }}>{file.date}</td>
-                      <td style={{ padding: "10px" }}>
-                        <button
-                          onClick={() => handleDownload(file.id, file.name)}
-                          style={{ color: "#1e90ff", background: "none", border: "none", marginRight: "8px", cursor: "pointer" }}
-                          title="Download file"
-                        >
-                          Download
-                        </button>
+                  {visibleFiles.map((file, index) => (
+                    <tr
+                      key={file.id}
+                      style={{
+                        borderBottom: index < visibleFiles.length - 1 ? "1px solid #f3f4f6" : "none",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f9fafb"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "white"}
+                    >
+                      <td style={{
+                        padding: "14px 16px",
+                        fontSize: "14px",
+                        color: "#1e293b",
+                        fontWeight: "500",
+                      }}>
+                        {file.name}
+                      </td>
+                      <td style={{
+                        padding: "14px 16px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                      }}>
+                        {file.type}
+                      </td>
+                      <td style={{
+                        padding: "14px 16px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                      }}>
+                        {file.size}
+                      </td>
+                      <td style={{
+                        padding: "14px 16px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                      }}>
+                        {file.date}
+                      </td>
+                      <td style={{
+                        padding: "14px 16px",
+                        textAlign: "right",
+                      }}>
+                        <div style={{ display: "flex", gap: "4px", justifyContent: "flex-end" }}>
+                          <button
+                            onClick={() => handleDownload(file.id, file.name)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#16a34a",
+                              fontSize: "13px",
+                              fontWeight: "500",
+                              cursor: "pointer",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0fdf4"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                            title="Download"
+                          >
+                            Download
+                          </button>
 
-                        <button
-                          onClick={() => handleSummarize(file.id)}
-                          style={{ color: "purple", background: "none", border: "none", marginRight: "8px", cursor: "pointer" }}
-                          title="AI Summary"
-                        >
-                          Summarize
-                        </button>
+                          <button
+                            onClick={() => handleSummarize(file.id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#8b5cf6",
+                              fontSize: "13px",
+                              fontWeight: "500",
+                              cursor: "pointer",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#faf5ff"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                            title="AI Summary"
+                          >
+                            Summarize
+                          </button>
 
-                        <button
-                          onClick={() => handleShare(file.id)}
-                          style={{ color: "green", background: "none", border: "none", marginRight: "8px", cursor: "pointer" }}
-                          title="Share file"
-                        >
-                          Share
-                        </button>
+                          <button
+                            onClick={() => handleShare(file.id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#16a34a",
+                              fontSize: "13px",
+                              fontWeight: "500",
+                              cursor: "pointer",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0fdf4"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                            title="Share"
+                          >
+                            Share
+                          </button>
 
-                        <button
-                          onClick={() => handleDelete(file.id)}
-                          style={{ color: "red", background: "none", border: "none", cursor: "pointer" }}
-                          title="Delete file"
-                        >
-                          Delete
-                        </button>
+                          <button
+                            onClick={() => handleDelete(file.id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#dc2626",
+                              fontSize: "13px",
+                              fontWeight: "500",
+                              cursor: "pointer",
+                              padding: "6px 10px",
+                              borderRadius: "4px",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#fee"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                            title="Delete"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
-          </>
+          </div>
         )}
 
         {/* Modals */}
