@@ -20,6 +20,11 @@ def lambda_handler(event, context,dynamodb_resource = None):
     Creates a shareable link for a file owned by the authenticated user.
     """
     try:
+        dynamodb = boto3.resource("dynamodb")
+
+        files_table = dynamodb.Table(os.environ["FILES_TABLE_NAME"])
+        shared_links_table = dynamodb.Table(os.environ["SHARED_LINKS_TABLE_NAME"])
+
         user_id = _get_user_id(event)
         if not user_id:
             return _response(401, {'error': 'Unauthorized: Missing or invalid authentication token'})
