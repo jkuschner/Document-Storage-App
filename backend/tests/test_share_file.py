@@ -73,9 +73,18 @@ def valid_event():
     }
 
 
-def test_share_file_success(dynamodb_tables, sample_file_record, valid_event):
+def test_share_file_success(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
     files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
+
+    class MockDynamoResource:
+        def Table(self, name):
+            if name == os.environ.get("FILES_TABLE_NAME"):
+                return files_table
+            elif name == os.environ.get("SHARED_LINKS_TABLE_NAME"):
+                return shared_links_table
+
+    monkeypatch.setattr(lambda_functions.share_file.handler, "boto3", type("boto3_mock", (), {"resource": lambda *_: MockDynamoResource()})())
 
     response = lambda_handler(valid_event, None)
 
