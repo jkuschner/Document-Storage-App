@@ -1,7 +1,7 @@
 import json
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import boto3
@@ -43,8 +43,10 @@ def lambda_handler(event, context,dynamodb_resource = None):
         if not file_item:
             return _response(404, {'error': 'File not found'})
 
+        now = datetime.now(timezone.utc)
+        expiration_time = now + timedelta(hours=expiration_hours)
+
         link_id = secrets.token_urlsafe(18)
-        expiration_time = datetime.utcnow() + timedelta(hours=expiration_hours)
         expires_at = int(expiration_time.timestamp())
 
         shared_links_table.put_item(
@@ -55,7 +57,7 @@ def lambda_handler(event, context,dynamodb_resource = None):
                 'userId': user_id,
                 's3Key': file_item['s3Key'],
                 'fileName': file_item['fileName'],
-                'createdAt': datetime.utcnow().isoformat(),
+                'createdAt': now.isoformat().replace("+00:00", "Z"),
                 'expiresAt': expires_at,
             }
         )
@@ -69,7 +71,7 @@ def lambda_handler(event, context,dynamodb_resource = None):
             200,
             {
                 'shareUrl': share_url,
-                'expiresAt': expiration_time.isoformat() + 'Z',
+                'expiresAt': expiration_time.isoformat().replace("+00:00", "Z"),
             }
         )
 
