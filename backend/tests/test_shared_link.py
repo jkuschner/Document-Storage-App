@@ -132,7 +132,7 @@ def test_shared_link_presigned_url_format(dynamodb_table, s3_bucket, valid_share
     record['shareToken'] = 'format-token'
     dynamodb_table.put_item(Item=record)
 
-    event = {'pathParameters': {'linkId': 'format-link'}}
+    event = {'pathParameters': {'shareToken': 'format-token'}}
     response = lambda_handler(event, None)
     body = json.loads(response['body'])
     download_url = body['downloadUrl']
