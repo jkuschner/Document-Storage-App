@@ -129,6 +129,7 @@ def test_shared_link_missing_s3_key(dynamodb_table):
 def test_shared_link_presigned_url_format(dynamodb_table, s3_bucket, valid_share_record):
     record = copy.deepcopy(valid_share_record)
     record['linkId'] = 'format-link'
+    record['shareToken'] = 'format-token'
     dynamodb_table.put_item(Item=record)
 
     event = {'pathParameters': {'linkId': 'format-link'}}
