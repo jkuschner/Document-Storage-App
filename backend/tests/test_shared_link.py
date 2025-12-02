@@ -48,7 +48,7 @@ def s3_bucket(aws_env):
 @pytest.fixture
 def valid_share_record():
     return {
-        'linkId': 'valid-link-123',
+        'shareToken': 'valid-link-123',
         'fileId': 'file-456',
         'userId': 'test-user-123',
         's3Key': 'test-user/test-file/document.pdf',
@@ -60,7 +60,7 @@ def valid_share_record():
 @pytest.fixture
 def expired_share_record():
     return {
-        'linkId': 'expired-link-456',
+        'shareToken': 'expired-link-456',
         'fileId': 'file-789',
         'userId': 'test-user-123',
         's3Key': 'test-user/old-file/expired.pdf',

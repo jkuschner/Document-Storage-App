@@ -38,18 +38,49 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - name: Get API URL
+      - name: Get Cognito Config from CloudFormation
+        run: |
+          USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name file-storage-dev-auth \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+          echo "REACT_APP_USER_POOL_ID=$USER_POOL_ID" >> $GITHUB_ENV
+          
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
+            --stack-name file-storage-dev-auth \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --output text)
+          echo "REACT_APP_USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID" >> $GITHUB_ENV
+          
+          IDENTITY_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name file-storage-dev-auth \
+            --query "Stacks[0].Outputs[?OutputKey=='IdentityPoolId'].OutputValue" \
+            --output text)
+          echo "REACT_APP_IDENTITY_POOL_ID=$IDENTITY_POOL_ID" >> $GITHUB_ENV
+          
+          echo "Cognito Config:"
+          echo "  UserPoolId: $USER_POOL_ID"
+          echo "  ClientId: $USER_POOL_CLIENT_ID"
+          echo "  IdentityPoolId: $IDENTITY_POOL_ID"
+          echo "API URL: $API_URL"
+
+      - name: Get API URL from CloudFormation
         run: |
           API_URL=$(aws cloudformation describe-stacks \
             --stack-name file-storage-dev-backend \
             --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
             --output text)
           echo "REACT_APP_API_URL=$API_URL" >> $GITHUB_ENV
+          echo "API URL: $API_URL"
 
       - name: Build frontend
         working-directory: frontend
         env: 
           REACT_APP_API_URL: ${{ env.REACT_APP_API_URL }}
+          REACT_APP_USER_POOL_ID: ${{ env.REACT_APP_USER_POOL_ID }}
+          REACT_APP_USER_POOL_CLIENT_ID: ${{ env.REACT_APP_USER_POOL_CLIENT_ID }}
+          REACT_APP_IDENTITY_POOL_ID: ${{ env.REACT_APP_IDENTITY_POOL_ID }}
+          REACT_APP_AWS_REGION: us-west-2
         run: npm run build
 
       - name: Get S3 Bucket Name from CloudFormation
@@ -59,12 +90,16 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='BucketName'].OutputValue" \
             --output text)
           echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
-          echo "Detected Bucket: $BUCKET_NAME"
+          echo "Detected S3 Bucket: $BUCKET_NAME"
 
       - name: Get CloudFront Distribution ID from CloudFormation
         run: |
-          echo "DISTRIBUTION_ID=E1YA1HJ2B2TSEQ" >> $GITHUB_ENV
-          echo "CloudFront Distribution ID set."
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name file-storage-dev-frontend \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+            --output text)
+          echo "DISTRIBUTION_ID=$DISTRIBUTION_ID" >> $GITHUB_ENV
+          echo "CloudFront Distribution: $DISTRIBUTION_ID"
 
       - name: Sync Files to S3
         run: aws s3 sync frontend/build "s3://$BUCKET_NAME" --delete
