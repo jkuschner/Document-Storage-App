@@ -12,6 +12,7 @@ os.environ['FILE_BUCKET'] = 'test-file-bucket'
 
 from lambda_functions.shared_link.handler import lambda_handler #noqa: E402
 
+@pytest.fixture
 def aws_env():
     """Single mock_aws fixture to cover DynamoDB + S3."""
     with mock_aws():
@@ -23,8 +24,8 @@ def dynamodb_table(aws_env):
     dynamodb = boto3.resource('dynamodb', region_name='us-west-2')
     table = dynamodb.create_table(
         TableName='test-shared-links-table',
-        KeySchema=[{'AttributeName': 'linkId', 'KeyType': 'HASH'}],
-        AttributeDefinitions=[{'AttributeName': 'linkId', 'AttributeType': 'S'}],
+        KeySchema=[{'AttributeName': 'shareToken', 'KeyType': 'HASH'}],
+        AttributeDefinitions=[{'AttributeName': 'shareToken', 'AttributeType': 'S'}],
         BillingMode='PAY_PER_REQUEST',
     )
     return table
