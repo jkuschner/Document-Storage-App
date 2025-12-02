@@ -34,7 +34,8 @@ def dynamodb_table(aws_env):
 @pytest.fixture
 def s3_bucket(aws_env):
     s3 = boto3.client('s3', region_name='us-west-2')
-    s3.create_bucket(Bucket='test-file-bucket')
+    s3.create_bucket(Bucket='test-file-bucket',
+        CreateBucketConfiguration={'LocationConstraint': 'us-west-2')
     s3.put_object(
         Bucket='test-file-bucket',
         Key='test-user/test-file/document.pdf',
