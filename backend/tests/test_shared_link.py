@@ -78,7 +78,15 @@ def test_shared_link_success(dynamodb_table, s3_bucket, valid_share_record):
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
     assert body['fileName'] == 'document.pdf'
-    assert 'downloadUrl' in body and 'X-Amz-Algorithm' in body['downloadUrl']
+
+    assert 'downloadUrl' in body
+    download_url = body['downloadUrl']
+    assert (
+        'X-Amz-Algorithm' in download_url          # real AWS SigV4
+        or 'AWSAccessKeyId' in download_url         # Moto SigV2
+        or 'Signature' in download_url              # Moto SigV2
+    )
+
     assert body['expiresAt'] == valid_share_record['expiresAt']
     assert response['headers']['Access-Control-Allow-Origin'] == '*'
 

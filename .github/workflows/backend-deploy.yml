@@ -29,15 +29,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - name: Debug AWS credentials
-        if: always()
-        run: |
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-          echo "Testing AWS CLI access..."
-          aws sts get-caller-identity || echo "Failed to authenticate"
-
-
       - name: Package Lambda functions
         run: |
           set -e
