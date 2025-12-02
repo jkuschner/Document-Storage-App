@@ -23,11 +23,15 @@ table = dynamodb.Table(FILES_TABLE_NAME)
 
 def extract_user_id_from_event(event):
     """
-    Extract user_id from JWT token.
-    Supports both API Gateway (with Cognito authorizer) and Lambda Function URLs.
+    Extract user_id from JWT token or request body.
+    Supports:
+    - API Gateway (with Cognito authorizer)
+    - Lambda Function URLs (Authorization header)
+    - Internal Lambda-to-Lambda calls (userId in body)
     
     For API Gateway: extracts from event['requestContext']['authorizer']['claims']['sub']
     For Lambda Function URLs: extracts from Authorization header JWT token
+    For internal Lambda calls: extracts from body.userId
     """
     # Try API Gateway context first (when called via API Gateway with Cognito authorizer)
     try:
@@ -37,47 +41,67 @@ def extract_user_id_from_event(event):
     except (KeyError, TypeError):
         pass
     
-    # Fallback: Extract from Authorization header (for Lambda Function URLs)
+    # Fallback 1: Extract from Authorization header (for Lambda Function URLs)
     try:
         headers = event.get('headers', {}) or {}
         # Handle case-insensitive header keys
         auth_header = headers.get('authorization') or headers.get('Authorization') or ''
         
-        if not auth_header.startswith('Bearer '):
-            logger.error("Missing or invalid Authorization header")
-            return None
-        
-        # Extract JWT token
-        token = auth_header[7:]  # Remove 'Bearer ' prefix
-        
-        # Decode JWT without verification (for Lambda Function URLs)
-        # JWT format: header.payload.signature
-        parts = token.split('.')
-        if len(parts) != 3:
-            logger.error("Invalid JWT token format")
-            return None
-        
-        # Decode payload (base64url)
-        payload = parts[1]
-        # Add padding if needed
-        padding = len(payload) % 4
-        if padding:
-            payload += '=' * (4 - padding)
-        
-        decoded_payload = base64.urlsafe_b64decode(payload)
-        claims = json.loads(decoded_payload)
-        
-        user_id = claims.get('sub')
-        if user_id:
-            logger.info("Extracted user_id from JWT token in Authorization header")
-            return user_id
-        else:
-            logger.error("JWT token missing 'sub' claim")
+        # Only process if Authorization header exists
+        if auth_header and auth_header.startswith('Bearer '):
+            # Extract JWT token
+            token = auth_header[7:]  # Remove 'Bearer ' prefix
+            
+            # Decode JWT without verification (for Lambda Function URLs)
+            # JWT format: header.payload.signature
+            parts = token.split('.')
+            if len(parts) != 3:
+                logger.error("Invalid JWT token format")
+                return None
+            
+            # Decode payload (base64url)
+            payload = parts[1]
+            # Add padding if needed
+            padding = len(payload) % 4
+            if padding:
+                payload += '=' * (4 - padding)
+            
+            decoded_payload = base64.urlsafe_b64decode(payload)
+            claims = json.loads(decoded_payload)
+            
+            user_id = claims.get('sub')
+            if user_id:
+                logger.info("Extracted user_id from JWT token in Authorization header")
+                return user_id
+            else:
+                logger.error("JWT token missing 'sub' claim")
+                return None
+        # If no Authorization header, fall through to body check
+        elif auth_header:
+            # Header exists but doesn't start with Bearer - invalid format
+            logger.error("Invalid Authorization header format")
             return None
             
     except Exception as e:
         logger.error(f"Error extracting user_id from JWT: {str(e)}", exc_info=True)
-        return None
+        pass
+    
+    # Fallback 2: Extract from request body (for internal Lambda-to-Lambda calls)
+    try:
+        body_str = event.get('body', '{}')
+        if isinstance(body_str, str):
+            body = json.loads(body_str)
+        else:
+            body = body_str
+        user_id = body.get('userId')
+        if user_id:
+            logger.info("Extracted user_id from request body (internal Lambda call)")
+            return user_id
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.warning(f"Failed to extract user_id from body: {e}")
+        pass
+    
+    return None
 
 
 def lambda_handler(event, context):
