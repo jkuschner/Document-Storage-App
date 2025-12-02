@@ -113,6 +113,7 @@ def test_shared_link_expired(dynamodb_table, expired_share_record):
 
 def test_shared_link_missing_s3_key(dynamodb_table):
     invalid_record = {
+        'shareToken': 'invalid-token-789',
         'linkId': 'invalid-link-789',
         'fileId': 'file-123',
         'fileName': 'test.pdf',

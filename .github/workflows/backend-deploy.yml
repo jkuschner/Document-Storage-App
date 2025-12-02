@@ -100,6 +100,10 @@ jobs:
               --function-name "$function_name" \
               --s3-bucket "$BUCKET" \
               --s3-key "$zip_file"
+
+            # Wait until AWS finishes updating this function
+            aws lambda wait function-updated --function-name "$function_name"
+
           done
           
           echo "All Lambda functions updated!"
