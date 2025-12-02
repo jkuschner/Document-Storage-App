@@ -4,6 +4,7 @@ import boto3
 from PyPDF2 import PdfReader
 from io import BytesIO
 import logging
+import base64
 
 # Configure logging
 logger = logging.getLogger()
@@ -18,6 +19,65 @@ FILES_TABLE_NAME = os.environ['FILES_TABLE_NAME']
 FILE_BUCKET_NAME = os.environ['FILE_BUCKET_NAME']
 
 table = dynamodb.Table(FILES_TABLE_NAME)
+
+
+def extract_user_id_from_event(event):
+    """
+    Extract user_id from JWT token.
+    Supports both API Gateway (with Cognito authorizer) and Lambda Function URLs.
+    
+    For API Gateway: extracts from event['requestContext']['authorizer']['claims']['sub']
+    For Lambda Function URLs: extracts from Authorization header JWT token
+    """
+    # Try API Gateway context first (when called via API Gateway with Cognito authorizer)
+    try:
+        user_id = event['requestContext']['authorizer']['claims']['sub']
+        logger.info("Extracted user_id from API Gateway authorizer context")
+        return user_id
+    except (KeyError, TypeError):
+        pass
+    
+    # Fallback: Extract from Authorization header (for Lambda Function URLs)
+    try:
+        headers = event.get('headers', {}) or {}
+        # Handle case-insensitive header keys
+        auth_header = headers.get('authorization') or headers.get('Authorization') or ''
+        
+        if not auth_header.startswith('Bearer '):
+            logger.error("Missing or invalid Authorization header")
+            return None
+        
+        # Extract JWT token
+        token = auth_header[7:]  # Remove 'Bearer ' prefix
+        
+        # Decode JWT without verification (for Lambda Function URLs)
+        # JWT format: header.payload.signature
+        parts = token.split('.')
+        if len(parts) != 3:
+            logger.error("Invalid JWT token format")
+            return None
+        
+        # Decode payload (base64url)
+        payload = parts[1]
+        # Add padding if needed
+        padding = len(payload) % 4
+        if padding:
+            payload += '=' * (4 - padding)
+        
+        decoded_payload = base64.urlsafe_b64decode(payload)
+        claims = json.loads(decoded_payload)
+        
+        user_id = claims.get('sub')
+        if user_id:
+            logger.info("Extracted user_id from JWT token in Authorization header")
+            return user_id
+        else:
+            logger.error("JWT token missing 'sub' claim")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error extracting user_id from JWT: {str(e)}", exc_info=True)
+        return None
 
 
 def lambda_handler(event, context):
@@ -35,10 +95,10 @@ def lambda_handler(event, context):
         
         logger.info(f"MCP Handler invoked with action: {action}")
         
-        # 🔒 SECURE FIX 1: Extract userId once from JWT (Cognito authorizer)
-        try:
-            user_id = event['requestContext']['authorizer']['claims']['sub']
-        except (KeyError, TypeError):
+        # 🔒 SECURE FIX: Extract userId from JWT (supports both API Gateway and Lambda Function URLs)
+        user_id = extract_user_id_from_event(event)
+        
+        if not user_id:
             logger.error("Unauthorized: Missing JWT claim for user ID")
             return _response(401, {'error': 'Unauthorized: Missing JWT claim'})
         
