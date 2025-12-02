@@ -23,9 +23,21 @@ def lambda_handler(event, context, dynamodb_resource=None):
         files_table = dynamodb.Table(FILES_TABLE_NAME)
 
         # Parse request body
+        # 🔒 SECURE FIX: Get userId from JWT token (Cognito authorizer)
+        try:
+            # The 'sub' claim holds the verified User ID
+            user_id = event['requestContext']['authorizer']['claims']['sub']
+        except (KeyError, TypeError):
+            # If the token is missing/invalid (API Gateway should mostly prevent this)
+            return {
+                'statusCode': 401,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'Unauthorized: Missing JWT claim'})
+            }
+
+        # Parse request body (now that we have the secured user_id)
         body = json.loads(event.get('body', '{}'))
         file_name = body.get('fileName')
-        user_id = body.get('userId', 'test-user')  # TODO: Get from Cognito
         content_type = body.get('contentType', 'application/octet-stream')
         
         if not file_name:

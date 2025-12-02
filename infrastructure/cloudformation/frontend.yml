@@ -69,3 +69,6 @@ Outputs:
   CloudFrontURL:
     Description: "URL for the CloudFront distribution"
     Value: !GetAtt CloudFrontDistribution.DomainName
+  CloudFrontDistributionId:
+    Description: "CloudFront Distribution ID"
+    Value: !Ref CloudFrontDistribution

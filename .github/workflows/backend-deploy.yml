@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'infrastructure/cloudformation/backend.yml'
+  workflow_dispatch:
   workflow_call:
     secrets:
       AWS_ACCESS_KEY_ID:
@@ -22,6 +23,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -35,29 +41,44 @@ jobs:
           cd backend/lambda_functions
           for dir in */; do
             function_name=$(basename "$dir")
+            echo "Packaging: $function_name"
             cd "$dir"
-            if [ -f requirements.txt ]; then
-              pip install -r requirements.txt -t .
+            
+            # Install dependencies if requirements.txt exists and is not empty
+            if [ -f requirements.txt ] && [ -s requirements.txt ]; then
+              echo "Installing dependencies for $function_name"
+              pip install -r requirements.txt -t . --quiet
             fi
-            zip -r "../${function_name}.zip" . -x "*.pyc" -x "__pycache__/*"
+            
+            # Create zip with handler.py at root
+            zip -r "../${function_name}.zip" . -x "*.pyc" -x "__pycache__/*" -x "*.dist-info/*"
+            
+            # Verify handler.py is at root of zip
+            echo "Verifying zip structure:"
+            unzip -l "../${function_name}.zip" | head -10
+            
             cd ..
           done
+          
+          echo "All packages created:"
+          ls -lh *.zip
 
       - name: Get Lambda artifacts bucket from CloudFormation
-        run: | #echo "BUCKET_NAME=lambda-code-dev-701804429470" >> $GITHUB_ENV
+        id: get_bucket 
+        run: |
           BUCKET_NAME=$(aws cloudformation describe-stacks \
             --stack-name file-storage-dev-infrastructure \
-            --query 'Stacks[0].Outputs[?OutputKey==`LambdaCodeBucketName`].OutputValue' \
+            --query "Stacks[0].Outputs[?OutputKey=='LambdaCodeBucketName'].OutputValue" \
             --output text)
           echo "bucket=$BUCKET_NAME" >> $GITHUB_OUTPUT
-
-
+          echo "Using bucket: $BUCKET_NAME"
 
       - name: Upload Lambda packages to S3
         run: |
           set -e
           cd backend/lambda_functions
           for zip_file in *.zip; do
+            echo "Uploading $zip_file to S3..."
             aws s3 cp "$zip_file" "s3://${{ steps.get_bucket.outputs.bucket }}/"
           done
 
@@ -66,18 +87,19 @@ jobs:
           set -e
           STACK_NAME="file-storage-dev-backend"
           BUCKET="${{ steps.get_bucket.outputs.bucket }}"
+          
           cd backend/lambda_functions
           for zip_file in *.zip; do
             base_name=$(basename "$zip_file" .zip)
-            lambda_suffix=$(echo "$base_name" | tr '_' '-')  # convert underscores to dashes
-
-            # Construct full function name exactly as CloudFormation did
+            # Convert underscores to dashes (upload_file -> upload-file)
+            lambda_suffix=$(echo "$base_name" | tr '_' '-')
             function_name="${STACK_NAME}-${lambda_suffix}"
-
+            
             echo "Updating Lambda: $function_name"
-
             aws lambda update-function-code \
               --function-name "$function_name" \
               --s3-bucket "$BUCKET" \
               --s3-key "$zip_file"
           done
+          
+          echo "All Lambda functions updated!"

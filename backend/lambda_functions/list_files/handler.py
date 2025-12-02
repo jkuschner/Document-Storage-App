@@ -22,9 +22,21 @@ def lambda_handler(event, context, dynamodb_resource = None):
         FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
         files_table = dynamodb.Table(FILES_TABLE_NAME)
 
-        query_params = event.get('queryStringParameters') or {}
-        user_id = query_params.get('userId', 'test-user')
+        # 🔒 SECURE FIX: Get userId from JWT token (Cognito authorizer)
+        try:
+            user_id = event['requestContext']['authorizer']['claims']['sub']
+        except (KeyError, TypeError):
+            # If the Authorizer fails, the API Gateway *should* block this, 
+            # but this is a defensive fallback to ensure no unauthorized access.
+            query_params = event.get('queryStringParameters') or {}
+            user_id = query_params.get('userId', 'test-user')
         
+            return {
+                'statusCode': 401,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'Unauthorized: Missing JWT claim'})
+            }
+
         # Query DynamoDB for user's files
         response = files_table.query(
             KeyConditionExpression=Key('userId').eq(user_id)

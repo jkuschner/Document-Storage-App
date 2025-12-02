@@ -4,6 +4,7 @@ import boto3
 from PyPDF2 import PdfReader
 from io import BytesIO
 import logging
+import base64
 
 # Configure logging
 logger = logging.getLogger()
@@ -18,6 +19,89 @@ FILES_TABLE_NAME = os.environ['FILES_TABLE_NAME']
 FILE_BUCKET_NAME = os.environ['FILE_BUCKET_NAME']
 
 table = dynamodb.Table(FILES_TABLE_NAME)
+
+
+def extract_user_id_from_event(event):
+    """
+    Extract user_id from JWT token or request body.
+    Supports:
+    - API Gateway (with Cognito authorizer)
+    - Lambda Function URLs (Authorization header)
+    - Internal Lambda-to-Lambda calls (userId in body)
+    
+    For API Gateway: extracts from event['requestContext']['authorizer']['claims']['sub']
+    For Lambda Function URLs: extracts from Authorization header JWT token
+    For internal Lambda calls: extracts from body.userId
+    """
+    # Try API Gateway context first (when called via API Gateway with Cognito authorizer)
+    try:
+        user_id = event['requestContext']['authorizer']['claims']['sub']
+        logger.info("Extracted user_id from API Gateway authorizer context")
+        return user_id
+    except (KeyError, TypeError):
+        pass
+    
+    # Fallback 1: Extract from Authorization header (for Lambda Function URLs)
+    try:
+        headers = event.get('headers', {}) or {}
+        # Handle case-insensitive header keys
+        auth_header = headers.get('authorization') or headers.get('Authorization') or ''
+        
+        # Only process if Authorization header exists
+        if auth_header and auth_header.startswith('Bearer '):
+            # Extract JWT token
+            token = auth_header[7:]  # Remove 'Bearer ' prefix
+            
+            # Decode JWT without verification (for Lambda Function URLs)
+            # JWT format: header.payload.signature
+            parts = token.split('.')
+            if len(parts) != 3:
+                logger.error("Invalid JWT token format")
+                return None
+            
+            # Decode payload (base64url)
+            payload = parts[1]
+            # Add padding if needed
+            padding = len(payload) % 4
+            if padding:
+                payload += '=' * (4 - padding)
+            
+            decoded_payload = base64.urlsafe_b64decode(payload)
+            claims = json.loads(decoded_payload)
+            
+            user_id = claims.get('sub')
+            if user_id:
+                logger.info("Extracted user_id from JWT token in Authorization header")
+                return user_id
+            else:
+                logger.error("JWT token missing 'sub' claim")
+                return None
+        # If no Authorization header, fall through to body check
+        elif auth_header:
+            # Header exists but doesn't start with Bearer - invalid format
+            logger.error("Invalid Authorization header format")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error extracting user_id from JWT: {str(e)}", exc_info=True)
+        pass
+    
+    # Fallback 2: Extract from request body (for internal Lambda-to-Lambda calls)
+    try:
+        body_str = event.get('body', '{}')
+        if isinstance(body_str, str):
+            body = json.loads(body_str)
+        else:
+            body = body_str
+        user_id = body.get('userId')
+        if user_id:
+            logger.info("Extracted user_id from request body (internal Lambda call)")
+            return user_id
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.warning(f"Failed to extract user_id from body: {e}")
+        pass
+    
+    return None
 
 
 def lambda_handler(event, context):
@@ -35,10 +119,19 @@ def lambda_handler(event, context):
         
         logger.info(f"MCP Handler invoked with action: {action}")
         
+        # 🔒 SECURE FIX: Extract userId from JWT (supports both API Gateway and Lambda Function URLs)
+        user_id = extract_user_id_from_event(event)
+        
+        if not user_id:
+            logger.error("Unauthorized: Missing JWT claim for user ID")
+            return _response(401, {'error': 'Unauthorized: Missing JWT claim'})
+        
+        # Pass the secure user_id to the handlers
         if action == 'resources/list':
-            return handle_resources_list(body)
+            return handle_resources_list(user_id)
         elif action == 'resources/read':
-            return handle_resources_read(body)
+            # The 'body' is still needed to get 'resource_id'
+            return handle_resources_read(user_id, body)
         else:
             return {
                 'statusCode': 400,
@@ -67,7 +160,7 @@ def lambda_handler(event, context):
         }
 
 
-def handle_resources_list(body):
+def handle_resources_list(user_id):
     """
     List all files for a user from DynamoDB
     
@@ -75,9 +168,6 @@ def handle_resources_list(body):
     Returns: {"resources": [{"id": "...", "name": "...", "uri": "..."}]}
     """
     try:
-        # Get userId from body (in production, extract from JWT token)
-        user_id = body.get('userId', 'test-user')
-        
         logger.info(f"Listing resources for user: {user_id}")
         
         # Query DynamoDB for user's files
@@ -115,7 +205,7 @@ def handle_resources_list(body):
         raise
 
 
-def handle_resources_read(body):
+def handle_resources_read(user_id, body):
     """
     Read file content from S3 and extract text if PDF
     
@@ -124,7 +214,6 @@ def handle_resources_read(body):
     """
     try:
         resource_id = body.get('resource_id')
-        user_id = body.get('userId', 'test-user')
         
         if not resource_id:
             return {
@@ -248,3 +337,13 @@ def handle_resources_read(body):
     except Exception as e:
         logger.error(f"Error reading resource: {str(e)}", exc_info=True)
         raise
+
+def _response(status_code: int, body: dict) -> dict:
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json',
+        },
+        'body': json.dumps(body),
+    }

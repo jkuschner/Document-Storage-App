@@ -4,7 +4,8 @@ on:
   push:
     branches: ["week-2-test-pipeline"]
     paths:
-     - 'frontend/**'
+      - 'frontend/**'
+  workflow_dispatch:  
   workflow_call:
     secrets:
       AWS_ACCESS_KEY_ID:
@@ -38,6 +39,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
+      # ========== BUG FIX: Get Cognito Config ==========
       - name: Get Cognito Config from CloudFormation
         run: |
           USER_POOL_ID=$(aws cloudformation describe-stacks \
@@ -62,7 +64,6 @@ jobs:
           echo "  UserPoolId: $USER_POOL_ID"
           echo "  ClientId: $USER_POOL_CLIENT_ID"
           echo "  IdentityPoolId: $IDENTITY_POOL_ID"
-          echo "API URL: $API_URL"
 
       - name: Get API URL from CloudFormation
         run: |
@@ -75,7 +76,7 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        env: 
+        env:
           REACT_APP_API_URL: ${{ env.REACT_APP_API_URL }}
           REACT_APP_USER_POOL_ID: ${{ env.REACT_APP_USER_POOL_ID }}
           REACT_APP_USER_POOL_CLIENT_ID: ${{ env.REACT_APP_USER_POOL_CLIENT_ID }}
@@ -90,7 +91,7 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='BucketName'].OutputValue" \
             --output text)
           echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
-          echo "Detected S3 Bucket: $BUCKET_NAME"
+          echo "S3 Bucket: $BUCKET_NAME"
 
       - name: Get CloudFront Distribution ID from CloudFormation
         run: |
@@ -98,6 +99,10 @@ jobs:
             --stack-name file-storage-dev-frontend \
             --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
             --output text)
+          # Fallback to hardcoded if output doesn't exist yet
+          if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" == "None" ]; then
+            DISTRIBUTION_ID="E1YA1HJ2B2TSEQ"
+          fi
           echo "DISTRIBUTION_ID=$DISTRIBUTION_ID" >> $GITHUB_ENV
           echo "CloudFront Distribution: $DISTRIBUTION_ID"
 
