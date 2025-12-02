@@ -2,9 +2,10 @@ name: Frontend Deploy
 
 on:
   push:
-    branches: ["main"]  # Changed from week-2-test-pipeline
+    branches: ["main"]
     paths:
       - 'frontend/**'
+  workflow_dispatch:  
   workflow_call:
     secrets:
       AWS_ACCESS_KEY_ID:
