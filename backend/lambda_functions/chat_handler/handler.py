@@ -25,11 +25,22 @@ def lambda_handler(event, context):
     3. Returning AI-generated summary
     """
     try:
-        # Parse request body
+        # 🔒 SECURE FIX: Get userId from JWT token (Cognito authorizer)
+        try:
+            user_id = event['requestContext']['authorizer']['claims']['sub']
+        except (KeyError, TypeError):
+            logger.error("Unauthorized: Missing JWT claim for user ID")
+            return {
+                'statusCode': 401,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'Unauthorized: Missing JWT claim'})
+            }
+
+        # Parse request body (now that we have the secured user_id)
         body = json.loads(event.get('body', '{}'))
         file_name = body.get('file_name')
         file_id = body.get('fileId')
-        user_id = body.get('userId', 'test-user')
+        # Note: We no longer read 'userId' from the body
 
         if not file_id:
             return {

@@ -15,11 +15,18 @@ def lambda_handler(event, context):
     """
     try:
         # Extract userId from request
-        # TODO: In production, get this from Cognito authorizer claims
-        # For now, check query parameters or use a default
-        query_params = event.get('queryStringParameters') or {}
-        user_id = query_params.get('userId', 'test-user')
-        
+        # 🔒 SECURE FIX: Get userId from JWT token (Cognito authorizer)
+        try:
+            user_id = event['requestContext']['authorizer']['claims']['sub']
+        except (KeyError, TypeError):
+            # If the Authorizer fails, the API Gateway *should* block this, 
+            # but this is a defensive fallback to ensure no unauthorized access.
+            return {
+                'statusCode': 401,
+                'headers': {'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'Unauthorized: Missing JWT claim'})
+            }
+
         # Query DynamoDB for user's files
         response = files_table.query(
             KeyConditionExpression=Key('userId').eq(user_id)

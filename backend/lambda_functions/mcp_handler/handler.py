@@ -35,10 +35,19 @@ def lambda_handler(event, context):
         
         logger.info(f"MCP Handler invoked with action: {action}")
         
+        # 🔒 SECURE FIX 1: Extract userId once from JWT (Cognito authorizer)
+        try:
+            user_id = event['requestContext']['authorizer']['claims']['sub']
+        except (KeyError, TypeError):
+            logger.error("Unauthorized: Missing JWT claim for user ID")
+            return _response(401, {'error': 'Unauthorized: Missing JWT claim'})
+        
+        # Pass the secure user_id to the handlers
         if action == 'resources/list':
-            return handle_resources_list(body)
+            return handle_resources_list(user_id)
         elif action == 'resources/read':
-            return handle_resources_read(body)
+            # The 'body' is still needed to get 'resource_id'
+            return handle_resources_read(user_id, body)
         else:
             return {
                 'statusCode': 400,
@@ -67,7 +76,7 @@ def lambda_handler(event, context):
         }
 
 
-def handle_resources_list(body):
+def handle_resources_list(user_id):
     """
     List all files for a user from DynamoDB
     
@@ -75,9 +84,6 @@ def handle_resources_list(body):
     Returns: {"resources": [{"id": "...", "name": "...", "uri": "..."}]}
     """
     try:
-        # Get userId from body (in production, extract from JWT token)
-        user_id = body.get('userId', 'test-user')
-        
         logger.info(f"Listing resources for user: {user_id}")
         
         # Query DynamoDB for user's files
@@ -115,7 +121,7 @@ def handle_resources_list(body):
         raise
 
 
-def handle_resources_read(body):
+def handle_resources_read(user_id, body):
     """
     Read file content from S3 and extract text if PDF
     
@@ -124,7 +130,6 @@ def handle_resources_read(body):
     """
     try:
         resource_id = body.get('resource_id')
-        user_id = body.get('userId', 'test-user')
         
         if not resource_id:
             return {
@@ -248,3 +253,13 @@ def handle_resources_read(body):
     except Exception as e:
         logger.error(f"Error reading resource: {str(e)}", exc_info=True)
         raise
+
+def _response(status_code: int, body: dict) -> dict:
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json',
+        },
+        'body': json.dumps(body),
+    }
