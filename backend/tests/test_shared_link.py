@@ -123,7 +123,7 @@ def test_shared_link_missing_s3_key(dynamodb_table):
 
     event = {'pathParameters': {'linkId': 'invalid-link-789'}}
     response = lambda_handler(event, None)
-    assert response['statusCode'] == 500
+    assert response['statusCode'] == 404
 
 
 def test_shared_link_presigned_url_format(dynamodb_table, s3_bucket, valid_share_record):
