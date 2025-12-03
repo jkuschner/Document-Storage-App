@@ -78,6 +78,7 @@ def test_shared_link_success(dynamodb_table, s3_bucket, valid_share_record):
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
     assert body['fileName'] == 'document.pdf'
+    assert body['fileId'] == 'file-456'
 
     assert 'downloadUrl' in body
     download_url = body['downloadUrl']
@@ -129,10 +130,10 @@ def test_shared_link_missing_s3_key(dynamodb_table):
 def test_shared_link_presigned_url_format(dynamodb_table, s3_bucket, valid_share_record):
     record = copy.deepcopy(valid_share_record)
     record['linkId'] = 'format-link'
-    record['shareToken'] = 'format-token'
+    record['shareToken'] = 'format-link'
     dynamodb_table.put_item(Item=record)
 
-    event = {'pathParameters': {'shareToken': 'format-token'}}
+    event = {'pathParameters': {'linkId': 'format-link'}}
     response = lambda_handler(event, None)
     body = json.loads(response['body'])
     download_url = body['downloadUrl']
