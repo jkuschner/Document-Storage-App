@@ -19,7 +19,7 @@ FILES_TABLE = 'files-dev'
 # mock API Gateway event
 MOCK_EVENT = {
     "body": json.dumps({
-        "fileName": "test.txt",
+        "fileName": TEST_FILENAME,
         'userId': TEST_USER_ID,
         "contentType": "text/plain"
     }),
