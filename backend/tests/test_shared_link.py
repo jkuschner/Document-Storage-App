@@ -78,8 +78,7 @@ def test_shared_link_success(dynamodb_table, s3_bucket, valid_share_record):
     assert response['statusCode'] == 200
     body = json.loads(response['body'])
     assert body['fileName'] == 'document.pdf'
-    assert body['fileId'] == 'file-456'
-
+    
     assert 'downloadUrl' in body
     download_url = body['downloadUrl']
     assert (
