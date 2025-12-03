@@ -1,11 +1,11 @@
 import copy
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
-from moto import mock_dynamodb
+from moto import mock_aws
 
 os.environ['FILES_TABLE_NAME'] = 'test-files-table'
 os.environ['SHARED_LINKS_TABLE_NAME'] = 'test-shared-links-table'
@@ -16,7 +16,7 @@ from lambda_functions.share_file.handler import lambda_handler  # noqa: E402
 
 @pytest.fixture
 def dynamodb_tables():
-    with mock_dynamodb():
+    with mock_aws():
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
         files_table = dynamodb.create_table(
@@ -138,7 +138,7 @@ def test_share_file_custom_expiration(dynamodb_tables, sample_file_record, valid
     response = lambda_handler(event, None)
     body = json.loads(response['body'])
     expires_at = datetime.fromisoformat(body['expiresAt'].replace('Z', '+00:00'))
-    expected = datetime.utcnow() + timedelta(hours=48)
+    expected = datetime.now(timezone.utc) + timedelta(hours=48)
     assert abs((expires_at - expected).total_seconds()) < 10
 
 

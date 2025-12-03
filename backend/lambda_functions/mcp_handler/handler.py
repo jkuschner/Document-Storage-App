@@ -179,12 +179,18 @@ def handle_resources_list(user_id):
         # Format resources for MCP protocol
         resources = []
         for item in response.get('Items', []):
+            # Convert Decimal to int for JSON serialization
+            file_size = item.get('fileSize', 0)
+            from decimal import Decimal
+            if isinstance(file_size, Decimal):
+                file_size = int(file_size)
+            
             resources.append({
                 'id': item.get('fileId'),
                 'name': item.get('fileName'),
                 'uri': f"s3://{FILE_BUCKET_NAME}/{item.get('s3Key')}",
                 'mimeType': item.get('contentType', 'application/octet-stream'),
-                'size': item.get('fileSize', 0)
+                'size': file_size
             })
         
         logger.info(f"Found {len(resources)} resources for user {user_id}")

@@ -1,66 +1,232 @@
-# tests/test_delete_file.py
-import json
-import os
 import pytest
+import json
 import boto3
 from moto import mock_aws
+import os
+import sys
 
-from lambda_functions.delete_file.handler import lambda_handler
+TEST_USER_ID = "test-user-123"
+TEST_FILE_ID = "file-456"
+TEST_BUCKET = "test-bucket"
+TEST_TABLE = "files-test"
 
-TEST_BUCKET_NAME = 'test-dummy-bucket'
-TEST_REGION = 'us-west-2'
-TEST_FILENAME = 'file_to_delete.txt'
-TEST_CONTENT = 'Temporary content'
+# Set environment variables
+os.environ['FILES_TABLE_NAME'] = TEST_TABLE
+os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET
+os.environ['ENVIRONMENT'] = 'test'
 
-MOCK_EVENT = {
-    'queryStringParameters': {'filename': TEST_FILENAME} 
-}
+# Add the lambda_functions directory to the path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lambda_functions', 'delete_file'))
+
+
+@pytest.fixture
+def aws_environment(monkeypatch):
+    """Set up environment variables."""
+    monkeypatch.setenv('FILES_TABLE_NAME', TEST_TABLE)
+    monkeypatch.setenv('FILE_BUCKET_NAME', TEST_BUCKET)
+    monkeypatch.setenv('ENVIRONMENT', 'test')
+
+
+@pytest.fixture
+def setup_aws_resources(aws_environment):
+    """Create mock DynamoDB table and S3 bucket."""
+    with mock_aws():
+        # Create DynamoDB table
+        dynamodb = boto3.resource('dynamodb', region_name='us-west-2')
+        table = dynamodb.create_table(
+            TableName=TEST_TABLE,
+            KeySchema=[
+                {'AttributeName': 'userId', 'KeyType': 'HASH'},
+                {'AttributeName': 'fileId', 'KeyType': 'RANGE'}
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'userId', 'AttributeType': 'S'},
+                {'AttributeName': 'fileId', 'AttributeType': 'S'}
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+        
+        # Create S3 bucket
+        s3 = boto3.client('s3', region_name='us-west-2')
+        s3.create_bucket(
+            Bucket=TEST_BUCKET,
+            CreateBucketConfiguration={'LocationConstraint': 'us-west-2'}
+        )
+        
+        # Import handler after mocks are set up - import fresh each time
+        import importlib
+        handler_module_name = 'lambda_functions.delete_file.handler'
+        if handler_module_name in sys.modules:
+            del sys.modules[handler_module_name]
+        handler = importlib.import_module(handler_module_name)
+        lambda_handler = handler.lambda_handler
+        
+        # Patch handler's table reference to use the mocked table
+        handler.files_table = table
+        
+        yield table, s3, lambda_handler
+
+
+def create_test_event(file_id):
+    """Create a test event with JWT context."""
+    return {
+        'requestContext': {
+            'authorizer': {
+                'claims': {
+                    'sub': TEST_USER_ID
+                }
+            }
+        },
+        'pathParameters': {
+            'fileId': file_id
+        }
+    }
+
 
 @mock_aws
-def test_delete_file_success():
-    """
-    Tests successful deletion by confirming the file is gone from S3.
-    """
-
-    # Create bucket and place a file
-    s3_client = boto3.client('s3', region_name=TEST_REGION)
-    s3_client.create_bucket(
-        Bucket=TEST_BUCKET_NAME,
-        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+def test_delete_file_success(aws_environment, setup_aws_resources):
+    """Test successful file deletion removes from S3 and DynamoDB."""
+    table, s3, lambda_handler = setup_aws_resources
+    
+    # Setup DynamoDB entry
+    s3_key = f'{TEST_USER_ID}/{TEST_FILE_ID}/test-document.pdf'
+    table.put_item(Item={
+        'userId': TEST_USER_ID,
+        'fileId': TEST_FILE_ID,
+        'fileName': 'test-document.pdf',
+        's3Key': s3_key
+    })
+    
+    # Setup S3 file
+    s3.put_object(
+        Bucket=TEST_BUCKET,
+        Key=s3_key,
+        Body=b'Test file content'
     )
-    s3_client.put_object(
-        Bucket=TEST_BUCKET_NAME,
-        Key=TEST_FILENAME,
-        Body=TEST_CONTENT
+    
+    event = create_test_event(TEST_FILE_ID)
+    response = lambda_handler(event, None)
+    
+    assert response['statusCode'] == 200
+    body = json.loads(response['body'])
+    assert 'message' in body
+    assert 'deleted' in body['message'].lower()
+    assert body['fileId'] == TEST_FILE_ID
+    
+    # Verify file is deleted from S3
+    with pytest.raises(s3.exceptions.NoSuchKey):
+        s3.get_object(Bucket=TEST_BUCKET, Key=s3_key)
+    
+    # Verify file is deleted from DynamoDB
+    result = table.get_item(
+        Key={
+            'userId': TEST_USER_ID,
+            'fileId': TEST_FILE_ID
+        }
     )
+    assert 'Item' not in result
 
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
-
-    # call the handler
-    response = lambda_handler(MOCK_EVENT, None)
-
-    # Check statusCode
-    assert response['statusCode'] == 204
-
-    # Check file is gone from S3
-    with pytest.raises(s3_client.exceptions.NoSuchKey):
-        s3_client.get_object(Bucket=TEST_BUCKET_NAME, Key=TEST_FILENAME)
 
 @mock_aws
-def test_delete_nonexistent_file_success():
-    """
-    Tests deleting a file that doesnt exist
-    """
-    s3_client = boto3.client('s3', region_name=TEST_REGION)
-    s3_client.create_bucket(
-        Bucket=TEST_BUCKET_NAME,
-        CreateBucketConfiguration={'LocationConstraint': TEST_REGION}
+def test_delete_file_missing_jwt(aws_environment, setup_aws_resources):
+    """Test missing JWT returns 401."""
+    _, _, lambda_handler = setup_aws_resources
+    
+    event = {
+        'pathParameters': {'fileId': TEST_FILE_ID}
+        # No requestContext
+    }
+    response = lambda_handler(event, None)
+    
+    assert response['statusCode'] == 401
+    body = json.loads(response['body'])
+    assert 'error' in body
+    assert 'unauthorized' in body['error'].lower() or 'missing' in body['error'].lower()
+
+
+@mock_aws
+def test_delete_file_not_found(aws_environment, setup_aws_resources):
+    """Test deleting non-existent file returns 404."""
+    _, _, lambda_handler = setup_aws_resources
+    
+    event = create_test_event('nonexistent-file-id')
+    response = lambda_handler(event, None)
+    
+    assert response['statusCode'] == 404
+    body = json.loads(response['body'])
+    assert 'error' in body
+    assert 'not found' in body['error'].lower()
+
+
+@mock_aws
+def test_delete_file_wrong_owner(aws_environment, setup_aws_resources):
+    """Test deleting another user's file returns 404 (not found for this user)."""
+    table, s3, lambda_handler = setup_aws_resources
+    
+    # Create file belonging to another user
+    other_user_id = 'other-user-789'
+    s3_key = f'{other_user_id}/{TEST_FILE_ID}/other-file.pdf'
+    table.put_item(Item={
+        'userId': other_user_id,
+        'fileId': TEST_FILE_ID,
+        'fileName': 'other-file.pdf',
+        's3Key': s3_key
+    })
+    
+    s3.put_object(
+        Bucket=TEST_BUCKET,
+        Key=s3_key,
+        Body=b'Other user content'
     )
+    
+    # Try to delete with TEST_USER_ID
+    event = create_test_event(TEST_FILE_ID)
+    response = lambda_handler(event, None)
+    
+    # Should return 404 (not found for this user) since composite key doesn't match
+    assert response['statusCode'] == 404
 
-    os.environ['FILE_BUCKET_NAME'] = TEST_BUCKET_NAME
 
-    missing_event = {'queryStringParameters': {'filename': 'nonexistent.txt'}}
-    response = lambda_handler(missing_event, None)
-
-    # Check statusCode
-    assert response['statusCode'] == 204
+@mock_aws
+def test_delete_file_removes_from_dynamodb(aws_environment, setup_aws_resources):
+    """Test that deletion removes the DynamoDB entry."""
+    table, s3, lambda_handler = setup_aws_resources
+    
+    # Setup file
+    s3_key = f'{TEST_USER_ID}/{TEST_FILE_ID}/test.pdf'
+    table.put_item(Item={
+        'userId': TEST_USER_ID,
+        'fileId': TEST_FILE_ID,
+        'fileName': 'test.pdf',
+        's3Key': s3_key
+    })
+    
+    s3.put_object(
+        Bucket=TEST_BUCKET,
+        Key=s3_key,
+        Body=b'Content'
+    )
+    
+    # Verify file exists in DynamoDB before deletion
+    result = table.get_item(
+        Key={
+            'userId': TEST_USER_ID,
+            'fileId': TEST_FILE_ID
+        }
+    )
+    assert 'Item' in result
+    
+    # Delete file
+    event = create_test_event(TEST_FILE_ID)
+    response = lambda_handler(event, None)
+    
+    assert response['statusCode'] == 200
+    
+    # Verify file is removed from DynamoDB
+    result = table.get_item(
+        Key={
+            'userId': TEST_USER_ID,
+            'fileId': TEST_FILE_ID
+        }
+    )
+    assert 'Item' not in result
