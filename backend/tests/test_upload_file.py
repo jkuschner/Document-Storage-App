@@ -18,12 +18,20 @@ FILES_TABLE = 'files-dev'
 
 # mock API Gateway event
 MOCK_EVENT = {
-    'body': json.dumps({
-        'fileName': TEST_FILENAME,
+    "body": json.dumps({
+        "fileName": "test.txt",
         'userId': TEST_USER_ID,
-        'contentType': 'text/plain'
-    })
+        "contentType": "text/plain"
+    }),
+    "requestContext": {
+        "authorizer": {
+            "claims": {
+                "sub": TEST_USER_ID
+            }
+        }
+    }
 }
+
 
 @mock_aws
 def test_upload_file_success():
