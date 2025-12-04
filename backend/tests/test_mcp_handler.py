@@ -94,6 +94,8 @@ def create_test_event(action, resource_id=None, use_body_auth=False):
         body["userId"] = TEST_USER_ID
 
     event = {
+        "version": "2.0",
+        "routeKey": "$default",
         "body": json.dumps(body),
         "isBase64Encoded": False,          
         "headers": {
