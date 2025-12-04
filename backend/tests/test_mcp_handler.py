@@ -93,7 +93,7 @@ def create_test_event(action, resource_id=None, use_body_auth=False):
         body["userId"] = TEST_USER_ID
 
     event = {
-        "body": json.dumps(body)
+        "body": json.dumps(body),
         "isBase64Encoded": False,          
         "headers": {
             "Content-Type": "application/json"
