@@ -100,14 +100,16 @@ def create_test_event(action, resource_id=None, use_body_auth=False):
             "Content-Type": "application/json"
         }
     }
+    event.pop("requestContext", None)
     
     if not use_body_auth:
-        event['requestContext'] = {
-            'authorizer': {
-                'claims': {
-                    'sub': TEST_USER_ID
-                }
-            }
+        event = {
+            "body": json.dumps(body),
+            "isBase64Encoded": False,
+            "headers": {"Content-Type": "application/json"},
+            "requestContext": {
+                "authorizer": {"claims": {"sub": TEST_USER_ID}}
+            },
         }
     
     return event
@@ -137,7 +139,7 @@ def test_resources_list_success(aws_environment, setup_aws_resources):
         'fileSize': int(512)  # Use int instead of letting DynamoDB convert to Decimal
     })
 
-    event = create_test_event('resources/list',use_body_auth=True)
+    event = create_test_event('resources/list')
     
     # Patch the global table in handler to use the test table
     with patch("handler.table", table):
