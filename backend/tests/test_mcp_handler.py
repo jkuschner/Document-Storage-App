@@ -136,11 +136,12 @@ def test_resources_list_success(aws_environment, setup_aws_resources):
         'contentType': 'text/plain',
         'fileSize': int(512)  # Use int instead of letting DynamoDB convert to Decimal
     })
+
+    event = create_test_event('resources/list',use_body_auth=True)
     
     # Patch the global table in handler to use the test table
     with patch("handler.table", table):
         # Call handler with action='resources/list'
-        event = create_test_event('resources/list')
         response = lambda_handler(event, None)
     
     # Assert 200 and files returned
