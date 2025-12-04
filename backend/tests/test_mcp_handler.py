@@ -94,6 +94,10 @@ def create_test_event(action, resource_id=None, use_body_auth=False):
 
     event = {
         "body": json.dumps(body)
+        "isBase64Encoded": False,          
+        "headers": {
+            "Content-Type": "application/json"
+
     }
     
     if not use_body_auth:
