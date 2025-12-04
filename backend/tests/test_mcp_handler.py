@@ -6,6 +6,7 @@ import os
 import sys
 from io import BytesIO
 from PyPDF2 import PdfWriter
+from unittest.mock import patch
 
 TEST_USER_ID = "test-user-123"
 TEST_FILE_ID = "file-456"
@@ -85,7 +86,7 @@ def create_test_event(action, resource_id=None, use_body_auth=False):
     body = {
         "action": action
     }
-    if resource_id:
+    if resource_id is not None:
         body["resource_id"] = resource_id
 
     # If using body auth, include userId inside the body
@@ -136,9 +137,11 @@ def test_resources_list_success(aws_environment, setup_aws_resources):
         'fileSize': int(512)  # Use int instead of letting DynamoDB convert to Decimal
     })
     
-    # Call handler with action='resources/list'
-    event = create_test_event('resources/list')
-    response = lambda_handler(event, None)
+    # Patch the global table in handler to use the test table
+    with patch("handler.table", test_table):
+        # Call handler with action='resources/list'
+        event = create_test_event('resources/list')
+        response = lambda_handler(event, None)
     
     # Assert 200 and files returned
     assert response['statusCode'] == 200
