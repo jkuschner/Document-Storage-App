@@ -80,7 +80,7 @@ jobs:
         working-directory: backend
         run: |
           mkdir -p test-results
-          pytest --maxfail=1 --disable-warnings --junitxml=test-results/results.xml || true
+          pytest --disable-warnings --junitxml=test-results/results.xml || true
         env:
           AWS_ACCESS_KEY_ID: fake
           AWS_SECRET_ACCESS_KEY: fake
