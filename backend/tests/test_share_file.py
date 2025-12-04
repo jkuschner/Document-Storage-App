@@ -1,7 +1,7 @@
 import copy
 import json
 import os
-from datetime import datetime, timedelta,timezone
+from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
@@ -21,8 +21,9 @@ def aws_env():
 
 
 @pytest.fixture
-def dynamodb_tables(aws_env):
-    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+def dynamodb_tables():
+    with mock_aws():
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
     files_table = dynamodb.create_table(
         TableName='test-files-table',

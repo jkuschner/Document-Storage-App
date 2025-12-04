@@ -23,7 +23,17 @@ def lambda_handler(event, context,dynamodb_resource = None):
         file_id = path_params.get('fileId')
 
         # Get userId from JWT token (Cognito authorizer)
-        user_id = event['requestContext']['authorizer']['claims']['sub']
+        try:
+            user_id = event['requestContext']['authorizer']['claims']['sub']
+        except (KeyError, TypeError):
+            return {
+                'statusCode': 401,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Unauthorized: Missing authentication'})
+            }
         
         if not file_id:
             return {
