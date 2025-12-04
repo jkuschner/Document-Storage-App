@@ -74,12 +74,26 @@ def setup_aws_resources(aws_environment):
 
 def create_test_event(action, resource_id=None, use_body_auth=False):
     """Create a test event with proper JWT context."""
+    #event = {
+    #    'body': json.dumps({
+    #        'action': action,
+    #        'resource_id': resource_id,
+    #        'userId': TEST_USER_ID if use_body_auth else None
+    #    })
+    #}
+
+    body = {
+        "action": action
+    }
+    if resource_id:
+        body["resource_id"] = resource_id
+
+    # If using body auth, include userId inside the body
+    if use_body_auth:
+        body["userId"] = TEST_USER_ID
+
     event = {
-        'body': json.dumps({
-            'action': action,
-            'resource_id': resource_id,
-            'userId': TEST_USER_ID if use_body_auth else None
-        })
+        "body": json.dumps(body)
     }
     
     if not use_body_auth:
