@@ -103,13 +103,12 @@ def create_test_event(action, resource_id=None, use_body_auth=False):
     event.pop("requestContext", None)
     
     if not use_body_auth:
-        event = {
-            "body": json.dumps(body),
-            "isBase64Encoded": False,
-            "headers": {"Content-Type": "application/json"},
-            "requestContext": {
-                "authorizer": {"claims": {"sub": TEST_USER_ID}}
-            },
+        event["requestContext"] = {
+            "authorizer": {
+                "claims": {
+                    "sub": TEST_USER_ID
+                }
+            }
         }
     
     return event
