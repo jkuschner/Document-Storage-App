@@ -74,6 +74,24 @@ def valid_event():
         'body': json.dumps({'expirationHours': 24}),
     }
 
+@pytest.fixture(autouse=True)
+def patch_handler_tables(dynamodb_tables):
+    files_table, shared_links_table = dynamodb_tables
+
+    class MockDynamoResource:
+        def Table(self, name):
+            if name == os.environ["FILES_TABLE_NAME"]:
+                return files_table
+            elif name == os.environ["SHARED_LINKS_TABLE_NAME"]:
+                return shared_links_table
+            else:
+                raise ValueError(f"Unexpected table name: {name}")
+
+    from unittest.mock import patch
+    with patch("lambda_functions.share_file.handler.boto3") as mock_boto3:
+        mock_boto3.resource.side_effect = lambda service_name, **kwargs: MockDynamoResource()
+        yield
+
 #def patch_boto(monkeypatch, files_table, shared_links_table):
     #class MockDynamoResource:
         #def Table(self, name):

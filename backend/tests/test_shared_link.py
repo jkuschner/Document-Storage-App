@@ -39,6 +39,14 @@ def aws_env():
         with patch.object(s3, 'generate_presigned_url', lambda *args, **kwargs: "https://mocked-presigned-url"):
             yield table, s3
 
+@pytest.fixture(autouse=True)
+def patch_handler_dependencies(aws_env):
+    """Patch the handler to use moto tables and client instead of real boto3."""
+    table, s3 = aws_env
+    with patch("lambda_functions.shared_link.handler.get_table", return_value=table), \
+         patch("lambda_functions.shared_link.handler.get_s3", return_value=s3):
+        yield
+
 
 @pytest.fixture
 def valid_share_record():
@@ -82,14 +90,12 @@ def test_shared_link_success(aws_env, valid_share_record):
 
 
 def test_shared_link_missing_link_id(aws_env):
-    table, s3 = aws_env
     event = {'pathParameters': {}}
     response = lambda_handler(event, None)
     assert response['statusCode'] == 400
 
 
 def test_shared_link_not_found(aws_env):
-    table, s3 = aws_env
     event = {'pathParameters': {'linkId': 'missing-link'}}
     response = lambda_handler(event, None)
     assert response['statusCode'] == 404
