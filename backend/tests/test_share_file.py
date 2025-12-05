@@ -74,26 +74,26 @@ def valid_event():
         'body': json.dumps({'expirationHours': 24}),
     }
 
-def patch_boto(monkeypatch, files_table, shared_links_table):
-    class MockDynamoResource:
-        def Table(self, name):
-            if name == os.environ["FILES_TABLE_NAME"]:
-                return files_table
-            elif name == os.environ["SHARED_LINKS_TABLE_NAME"]:
-                return shared_links_table
-            else:
-                raise ValueError(f"Unexpected table name: {name}")
+#def patch_boto(monkeypatch, files_table, shared_links_table):
+    #class MockDynamoResource:
+        #def Table(self, name):
+         #   if name == os.environ["FILES_TABLE_NAME"]:
+          #      return files_table
+           # elif name == os.environ["SHARED_LINKS_TABLE_NAME"]:
+            #    return shared_links_table
+           # else:
+           #     raise ValueError(f"Unexpected table name: {name}")
 
-    monkeypatch.setattr(
-        "lambda_functions.share_file.handler.boto3",
-        type("boto3_mock", (), {"resource": lambda *_: MockDynamoResource()})
+   # monkeypatch.setattr(
+        #"lambda_functions.share_file.handler.boto3",
+        #type("boto3_mock", (), {"resource": lambda *_: MockDynamoResource()})
     )
 
-def test_share_file_success(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
+def test_share_file_success(dynamodb_tables, sample_file_record, valid_event):
     files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
 
-    patch_boto(monkeypatch, files_table, shared_links_table)
+    #patch_boto(monkeypatch, files_table, shared_links_table)
 
     response = lambda_handler(valid_event, None)
 
@@ -111,7 +111,7 @@ def test_share_file_success(monkeypatch, dynamodb_tables, sample_file_record, va
     assert record['Item']['fileName'] == sample_file_record['fileName']
 
 
-def test_share_file_missing_jwt_claims(valid_event):
+def test_share_file_missing_jwt_claims(valid_event, dynamodb_tables):
     event = copy.deepcopy(valid_event)
     event['requestContext'] = {}
 
@@ -120,7 +120,7 @@ def test_share_file_missing_jwt_claims(valid_event):
     assert 'Unauthorized' in json.loads(response['body'])['error']
 
 
-def test_share_file_missing_file_id(valid_event):
+def test_share_file_missing_file_id(valid_event,dynamodb_tables):
     event = copy.deepcopy(valid_event)
     event['pathParameters'] = {}
 
@@ -128,18 +128,18 @@ def test_share_file_missing_file_id(valid_event):
     assert response['statusCode'] == 400
 
 
-def test_share_file_not_found(monkeypatch, dynamodb_tables, valid_event):
+def test_share_file_not_found(valid_event, dynamodb_tables):
     files_table, shared_links_table = dynamodb_tables
-    patch_boto(monkeypatch, files_table, shared_links_table)
+    #patch_boto(monkeypatch, files_table, shared_links_table)
     response = lambda_handler(valid_event, None)
     assert response['statusCode'] == 404
 
 
-def test_share_file_wrong_owner(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
+def test_share_file_wrong_owner(dynamodb_tables, sample_file_record, valid_event):
     files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
 
-    patch_boto(monkeypatch, files_table, shared_links_table)
+    #patch_boto(monkeypatch, files_table, shared_links_table)
 
     event = copy.deepcopy(valid_event)
     event['requestContext']['authorizer']['claims']['sub'] = 'other-user'
@@ -148,11 +148,11 @@ def test_share_file_wrong_owner(monkeypatch, dynamodb_tables, sample_file_record
     assert response['statusCode'] == 404
 
 
-def test_share_file_custom_expiration(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
+def test_share_file_custom_expiration(dynamodb_tables, sample_file_record, valid_event):
     files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
 
-    patch_boto(monkeypatch, files_table, shared_links_table)
+    #patch_boto(monkeypatch, files_table, shared_links_table)
 
     event = copy.deepcopy(valid_event)
     event['body'] = json.dumps({'expirationHours': 48})
@@ -164,11 +164,11 @@ def test_share_file_custom_expiration(monkeypatch, dynamodb_tables, sample_file_
     assert abs((expires_at - expected).total_seconds()) < 10
 
 
-def test_share_file_expiration_clamping(monkeypatch, dynamodb_tables, sample_file_record, valid_event):
+def test_share_file_expiration_clamping(dynamodb_tables, sample_file_record, valid_event):
     files_table, shared_links_table = dynamodb_tables
     files_table.put_item(Item=sample_file_record)
 
-    patch_boto(monkeypatch, files_table, shared_links_table)
+    #patch_boto(monkeypatch, files_table, shared_links_table)
 
     event = copy.deepcopy(valid_event)
     event['body'] = json.dumps({'expirationHours': 0})

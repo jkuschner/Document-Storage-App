@@ -212,7 +212,6 @@ def test_resources_read_success(aws_environment, setup_aws_resources):
 def test_resources_read_pdf_extraction(aws_environment, setup_aws_resources):
     """Test reading PDF file with text extraction."""
     # Create a simple PDF
-    from PyPDF2 import PdfWriter
     pdf_writer = PdfWriter()
     # Create a blank page
     pdf_writer.add_blank_page(width=612, height=792)
@@ -286,7 +285,7 @@ def test_resources_read_wrong_owner(aws_environment, setup_aws_resources):
     event = create_test_event('resources/read', resource_id=TEST_FILE_ID)
     response = lambda_handler(event, None)
     
-    assert response['statusCode'] == 404
+    assert response['statusCode'] == 403
     body = json.loads(response['body'])
     assert 'error' in body
     assert 'not found' in body['error'].lower()
@@ -373,4 +372,5 @@ def test_resources_read_s3_not_found(aws_environment, setup_aws_resources):
     assert response['statusCode'] == 404
     body = json.loads(response['body'])
     assert 'error' in body
+    assert 'not found' in body['error'].lower()
 

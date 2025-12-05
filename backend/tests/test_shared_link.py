@@ -6,6 +6,7 @@ import time
 import boto3
 import pytest
 from moto import mock_aws
+from unittest.mock import patch
 
 os.environ['SHARED_LINKS_TABLE'] = 'test-shared-links-table'
 os.environ['FILE_BUCKET'] = 'test-file-bucket'
@@ -35,37 +36,8 @@ def aws_env():
             Key='test-user/test-file/document.pdf',
             Body=b'test-content',
         )
-        yield table, s3
-
-
-@pytest.fixture
-def dynamodb_table():
-    with mock_aws():
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        table = dynamodb.create_table(
-            TableName='test-shared-links-table',
-            KeySchema=[
-                {'AttributeName': 'shareToken', 'KeyType': 'HASH'},
-            ],
-            AttributeDefinitions=[
-                {'AttributeName': 'shareToken', 'AttributeType': 'S'},
-            ],
-            BillingMode='PAY_PER_REQUEST',
-        )
-        yield table
-
-
-@pytest.fixture
-def s3_bucket():
-    with mock_aws():
-        s3 = boto3.client('s3', region_name='us-east-1')
-        s3.create_bucket(Bucket='test-file-bucket')
-        s3.put_object(
-            Bucket='test-file-bucket',
-            Key='test-user/test-file/document.pdf',
-            Body=b'test-content',
-        )
-        yield s3
+        with patch.object(s3, 'generate_presigned_url', lambda *args, **kwargs: "https://mocked-presigned-url"):
+            yield table, s3
 
 
 @pytest.fixture
