@@ -51,7 +51,7 @@ def test_chat_summarization_flow():
     }
 
     # Step 1: Request upload URL
-    upload_resp = requests.post(upload_url, json=upload_payload)
+    upload_resp = requests.post(upload_url, json=upload_payload, headers=headers)
     assert upload_resp.status_code == 200
 
     upload_body = upload_resp.json()

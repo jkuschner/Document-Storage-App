@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+import jwt
 
 # Load config
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "integration_config.json")
@@ -9,6 +10,9 @@ with open(CONFIG_PATH, "r") as f:
 
 MCP_URL = config["mcp_url"]
 TEST_USER = config["test_user"]
+
+TEST_JWT = jwt.encode({"sub": TEST_USER}, "dummy-secret", algorithm="HS256")
+AUTH_HEADER = {"Authorization": f"Bearer {TEST_JWT}"}
 
 
 def test_mcp_list_resources():

@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 import requests
+import jwt
 
 # Load integration configuration
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "integration_config.json")
@@ -10,6 +11,9 @@ with open(CONFIG_PATH, "r") as f:
 
 API_BASE = config["api_base_url"]
 TEST_USER = config["test_user"]
+
+TEST_JWT = jwt.encode({"sub": TEST_USER}, "dummy-secret", algorithm="HS256")
+AUTH_HEADER = {"Authorization": f"Bearer {TEST_JWT}"}
 
 
 def test_file_operations_end_to_end():

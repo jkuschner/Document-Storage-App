@@ -240,7 +240,7 @@ def test_resources_read_pdf_extraction(aws_environment, setup_aws_resources):
     
     event = create_test_event('resources/read', resource_id=TEST_FILE_ID)
     with patch("handler.table", table), patch("handler.s3", s3), \
-         patch("handler.PdfReader") as MockPdfReader:
+         patch("PyPDF2.PdfReader") as MockPdfReader:
         mock_reader = MockPdfReader.return_value
         mock_reader.pages = [type("Page", (), {"extract_text": lambda self=None: "mock text"})()]
         response = lambda_handler(event, None)
@@ -298,7 +298,7 @@ def test_resources_read_wrong_owner(aws_environment, setup_aws_resources):
 
 
 # Test 7: Missing JWT - returns 401
-def test_missing_jwt_returns_401(aws_environment):
+def test_missing_jwt_returns_401(aws_environment, setup_aws_resources):
     """Test that missing JWT returns 401."""
     table, s3 = setup_aws_resources
     event = {
@@ -342,7 +342,7 @@ def test_internal_call_with_body_userid(aws_environment, setup_aws_resources):
 
 
 # Test 9: Invalid action - returns 400
-def test_invalid_action_returns_400(aws_environment):
+def test_invalid_action_returns_400(aws_environment, setup_aws_resources):
     """Test that invalid action returns 400."""
     table, s3 = setup_aws_resources
     event = create_test_event('invalid-action')
@@ -356,7 +356,7 @@ def test_invalid_action_returns_400(aws_environment):
 
 
 # Test 10: Missing resource_id for resources/read
-def test_resources_read_missing_resource_id(aws_environment):
+def test_resources_read_missing_resource_id(aws_environment, setup_aws_resources):
     """Test that missing resource_id returns 400."""
     table, s3 = setup_aws_resources
     event = create_test_event('resources/read', resource_id=None)
