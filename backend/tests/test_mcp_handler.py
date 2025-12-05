@@ -69,6 +69,7 @@ def setup_aws_resources(aws_environment):
         
         # Patch handler's table reference to use the mocked table
         handler.table = table
+        handler.s3 = s3
         
         yield table, s3
 
@@ -102,7 +103,6 @@ def create_test_event(action, resource_id=None, use_body_auth=False):
             "Content-Type": "application/json"
         }
     }
-    event.pop("requestContext", None)
     
     if not use_body_auth:
         event["requestContext"] = {
@@ -219,6 +219,10 @@ def test_resources_read_pdf_extraction(aws_environment, setup_aws_resources):
     pdf_buffer = BytesIO()
     pdf_writer.write(pdf_buffer)
     pdf_content = pdf_buffer.getvalue()
+
+    with patch('handler.PdfReader') as MockPdfReader:
+        mock_reader = MockPdfReader.return_value
+        mock_reader.pages = [type("Page", (), {"extract_text": lambda self=None: ""})()]
     
     table, s3 = setup_aws_resources
     s3_key = f'{TEST_USER_ID}/{TEST_FILE_ID}/test.pdf'

@@ -19,33 +19,33 @@ def aws_env():
     with mock_aws():
         yield
 
-
 @pytest.fixture
 def dynamodb_tables():
     with mock_aws():
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    files_table = dynamodb.create_table(
-        TableName='test-files-table',
-        KeySchema=[
-            {'AttributeName': 'userId', 'KeyType': 'HASH'},
-            {'AttributeName': 'fileId', 'KeyType': 'RANGE'},
-        ],
-        AttributeDefinitions=[
-            {'AttributeName': 'userId', 'AttributeType': 'S'},
-            {'AttributeName': 'fileId', 'AttributeType': 'S'},
-        ],
-        BillingMode='PAY_PER_REQUEST',
-    )
+        files_table = dynamodb.create_table(
+            TableName='test-files-table',
+            KeySchema=[
+                {'AttributeName': 'userId', 'KeyType': 'HASH'},
+                {'AttributeName': 'fileId', 'KeyType': 'RANGE'},
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'userId', 'AttributeType': 'S'},
+                {'AttributeName': 'fileId', 'AttributeType': 'S'},
+            ],
+            BillingMode='PAY_PER_REQUEST',
+        )
 
-    shared_links_table = dynamodb.create_table(
-        TableName='test-shared-links-table',
-        KeySchema=[{'AttributeName': 'linkId', 'KeyType': 'HASH'}],
-        AttributeDefinitions=[{'AttributeName': 'linkId', 'AttributeType': 'S'}],
-        BillingMode='PAY_PER_REQUEST',
-    )
+        shared_links_table = dynamodb.create_table(
+            TableName='test-shared-links-table',
+            KeySchema=[{'AttributeName': 'linkId', 'KeyType': 'HASH'}],
+            AttributeDefinitions=[{'AttributeName': 'linkId', 'AttributeType': 'S'}],
+            BillingMode='PAY_PER_REQUEST',
+        )
 
-    return files_table, shared_links_table
+        return files_table, shared_links_table
+
 
 @pytest.fixture
 def sample_file_record():
