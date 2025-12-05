@@ -87,7 +87,7 @@ def valid_event():
    # monkeypatch.setattr(
         #"lambda_functions.share_file.handler.boto3",
         #type("boto3_mock", (), {"resource": lambda *_: MockDynamoResource()})
-    )
+    #)
 
 def test_share_file_success(dynamodb_tables, sample_file_record, valid_event):
     files_table, shared_links_table = dynamodb_tables
