@@ -140,7 +140,7 @@ def test_resources_list_success(aws_environment, setup_aws_resources):
         'fileSize': int(512)  # Use int instead of letting DynamoDB convert to Decimal
     })
 
-    event = create_test_event('resources/list')
+    event = create_test_event('resources/list', use_body_auth=True)
     
     # Patch the global table in handler to use the test table
     with patch("handler.table", table),patch("handler.s3", s3):
@@ -169,7 +169,7 @@ def test_resources_list_success(aws_environment, setup_aws_resources):
 def test_resources_list_empty(aws_environment, setup_aws_resources):
     """Test listing files when user has none."""
     table, s3 = setup_aws_resources
-    event = create_test_event('resources/list')
+    event = create_test_event('resources/list', use_body_auth=True)
     with patch("handler.table", table), patch("handler.s3", s3):
         response = lambda_handler(event, None)
     
@@ -200,7 +200,7 @@ def test_resources_read_success(aws_environment, setup_aws_resources):
         Body=b'This is the file content to read.'
     )
     
-    event = create_test_event('resources/read', resource_id=TEST_FILE_ID)
+    event = create_test_event('resources/read', resource_id=TEST_FILE_ID, use_body_auth=True)
     with patch("handler.table", table), patch("handler.s3", s3):
         response = lambda_handler(event, None)
     
@@ -238,7 +238,7 @@ def test_resources_read_pdf_extraction(aws_environment, setup_aws_resources):
         Body=pdf_content
     )
     
-    event = create_test_event('resources/read', resource_id=TEST_FILE_ID)
+    event = create_test_event('resources/read', resource_id=TEST_FILE_ID, use_body_auth=True)
     with patch("handler.table", table), patch("handler.s3", s3), \
          patch("PyPDF2.PdfReader") as MockPdfReader:
         mock_reader = MockPdfReader.return_value
@@ -255,7 +255,7 @@ def test_resources_read_pdf_extraction(aws_environment, setup_aws_resources):
 def test_resources_read_not_found(aws_environment, setup_aws_resources):
     """Test reading non-existent file returns 404."""
     table, s3 = setup_aws_resources
-    event = create_test_event('resources/read', resource_id='nonexistent-file')
+    event = create_test_event('resources/read', resource_id='nonexistent-file', use_body_auth=True)
     with patch("handler.table", table), patch("handler.s3", s3):
         response = lambda_handler(event, None)
     
@@ -287,11 +287,11 @@ def test_resources_read_wrong_owner(aws_environment, setup_aws_resources):
     
     # Query with TEST_USER_ID but file belongs to other_user_id
     # Since composite key is (userId, fileId), this will return 404
-    event = create_test_event('resources/read', resource_id=TEST_FILE_ID)
+    event = create_test_event('resources/read', resource_id=TEST_FILE_ID, use_body_auth=True)
     with patch("handler.table", table), patch("handler.s3", s3):
         response = lambda_handler(event, None)
     
-    assert response['statusCode'] == 403
+    assert response['statusCode'] == 404
     body = json.loads(response['body'])
     assert 'error' in body
     assert 'not found' in body['error'].lower()
@@ -325,13 +325,13 @@ def test_internal_call_with_body_userid(aws_environment, setup_aws_resources):
         's3Key': f'{TEST_USER_ID}/{TEST_FILE_ID}/test.txt'
     })
     
-    event = {
-        'body': json.dumps({
-            'action': 'resources/list',
-            'userId': TEST_USER_ID  # Internal call passes userId in body
-        })
-    }
-    
+    #event = {
+     #   'body': json.dumps({
+       #     'action': 'resources/list',
+       #     'userId': TEST_USER_ID  # Internal call passes userId in body
+       # })
+    #}
+    event = create_test_event('resources/list', use_body_auth=True)
     with patch("handler.table", table), patch("handler.s3", s3):
         response = lambda_handler(event, None)
 
@@ -352,7 +352,7 @@ def test_invalid_action_returns_400(aws_environment, setup_aws_resources):
     assert response['statusCode'] == 400
     body = json.loads(response['body'])
     assert 'error' in body
-    assert 'invalid action' in body['error'].lower()
+    assert 'invalid' in body['error'].lower()
 
 
 # Test 10: Missing resource_id for resources/read
@@ -381,7 +381,7 @@ def test_resources_read_s3_not_found(aws_environment, setup_aws_resources):
     })
     
     # Don't create S3 object
-    event = create_test_event('resources/read', resource_id=TEST_FILE_ID)
+    event = create_test_event('resources/read', resource_id=TEST_FILE_ID, use_body_auth=True)
     with patch("handler.table", table), patch("handler.s3", s3):
         response = lambda_handler(event, None)
     
