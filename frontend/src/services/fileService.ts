@@ -67,6 +67,7 @@ export class FileService {
       fileName: file.name,
       userId,
       contentType: file.type || 'application/octet-stream',
+      size: file.size,
     });
 
     // Step 2: Upload file to S3 using presigned URL

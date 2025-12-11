@@ -33,6 +33,7 @@ def lambda_handler(event, context):
         body = json.loads(event.get('body', '{}'))
         file_name = body.get('fileName')
         content_type = body.get('contentType', 'application/octet-stream')
+        file_size = body.get('size')
         
         if not file_name:
             return {
@@ -57,17 +58,21 @@ def lambda_handler(event, context):
         )
         
         # Create DynamoDB entry
-        files_table.put_item(
-            Item={
-                'userId': user_id,
-                'fileId': file_id,
-                'fileName': file_name,
-                's3Key': s3_key,
-                'contentType': content_type,
-                'uploadDate': datetime.utcnow().isoformat(),
-                'status': 'pending'
-            }
-        )
+        item = {
+            'userId': user_id,
+            'fileId': file_id,
+            'fileName': file_name,
+            's3Key': s3_key,
+            'contentType': content_type,
+            'uploadDate': datetime.utcnow().isoformat(),
+            'status': 'pending'
+        }
+
+        # Add size if provided
+        if file_size is not None:
+            item['size'] = file_size
+
+        files_table.put_item(Item=item)
         
         return {
             'statusCode': 200,

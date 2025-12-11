@@ -2,11 +2,24 @@ import json
 import os
 import boto3
 from boto3.dynamodb.conditions import Key
+from decimal import Decimal
 
 # Initialize DynamoDB resource
 dynamodb = boto3.resource('dynamodb')
 FILES_TABLE_NAME = os.environ.get('FILES_TABLE_NAME', 'files-dev')
 files_table = dynamodb.Table(FILES_TABLE_NAME)
+
+
+def decimal_to_number(obj):
+    """Convert Decimal objects to int or float for JSON serialization"""
+    if isinstance(obj, list):
+        return [decimal_to_number(i) for i in obj]
+    elif isinstance(obj, dict):
+        return {k: decimal_to_number(v) for k, v in obj.items()}
+    elif isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    else:
+        return obj
 
 
 def lambda_handler(event, context):
@@ -31,9 +44,12 @@ def lambda_handler(event, context):
         response = files_table.query(
             KeyConditionExpression=Key('userId').eq(user_id)
         )
-        
+
         files = response.get('Items', [])
-        
+
+        # Convert Decimal types to int/float for JSON serialization
+        files = decimal_to_number(files)
+
         return {
             'statusCode': 200,
             'headers': {
